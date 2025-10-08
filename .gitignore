@@ -1,0 +1,105 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Linker files
+*.ilk
+
+# Debugger Files
+*.pdb
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# debug information files
+*.dwo
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Autotools
+/autom4te.cache
+/aclocal.m4
+/compile
+/config.guess
+/config.log
+/config.status
+/config.sub
+/configure
+/depcomp
+/install-sh
+/ltmain.sh
+/missing
+/Makefile.in
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Pip environment
+.env/
+.venv/
+env/
+venv/
+ENV/
+
+# Jupyter Notebook Checkpoints (if applicable)
+.ipynb_checkpoints/
+
+# Python egg files
+*.egg
+*.egg-info/
+dist/
+build/
+
+# === VS Code ===
+.vscode/
+*.code-workspace
+
+# === Raspberry Pi / Linux Specific (optional) ===
+core
+*.swp
+*~
+.*.sw?
+# System files
+.DS_Store
+Thumbs.db
+
+# === Git ===
+*.orig
+*.rej
+
+# === Logs ===
+*.log
