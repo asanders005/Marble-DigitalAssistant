@@ -10,6 +10,10 @@ enable_testing()
 
 add_executable(${PROJECT_NAME} Source/main.cpp)
 
+target_link_libraries(${PROJECT_NAME} PRIVATE wiringPi)
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/WiringPi/wiringPi)
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
