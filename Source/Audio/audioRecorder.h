@@ -1,0 +1,31 @@
+#include "wavHeader.h"
+#include <alsa/asoundlib.h>
+
+#define PCM_MICROPHONE "plughw:3,0"
+
+class AudioRecorder
+{
+public:
+    AudioRecorder(bool recordToWav = false);
+    
+    bool startRecording(std::string filename = "recording.wav", int bytesPerSample = 2);
+    void recordChunk();
+    void stopRecording();
+    
+private:
+    bool recordToWav = false;
+    WAVHeader wavHeader;
+    std::ofstream wavFile;
+    int bytesRecorded = 0;
+
+private:
+    snd_pcm_t* pcmHandle;
+    snd_pcm_hw_params_t* params;
+    snd_pcm_uframes_t frames = 32;
+    int pcm, dir;
+    unsigned int rate = 44100; // Sample rate
+    int channels = 1;
+    snd_pcm_uframes_t framesPerPeriod = 32;
+    char* buffer;    
+    int bufferSize;
+};

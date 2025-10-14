@@ -1,21 +1,7 @@
+#include "Audio/audioRecorder.h"
+
 #include <iostream>
 #include <wiringPi.h>
-
-void shortFlash(int pin)
-{
-    digitalWrite(pin, HIGH);
-    delay(200);
-    digitalWrite(pin, LOW);
-    delay(200);
-}
-
-void longFlash(int pin)
-{
-    digitalWrite(pin, HIGH);
-    delay(500);
-    digitalWrite(pin, LOW);
-    delay(200);
-}
 
 int main(int, char **)
 {
@@ -31,6 +17,9 @@ int main(int, char **)
     pinMode(inputPin, INPUT);
     pullUpDnControl(inputPin, PUD_UP); // Enable pull-up resistor
 
+    AudioRecorder recorder{ true };
+    bool isRecording = false;
+
     while (true)
     {
         if (digitalRead(inputPin) == LOW && toggleAvailable) // Button pressed
@@ -39,26 +28,26 @@ int main(int, char **)
             digitalWrite(breadboardPin, lightOn ? HIGH : LOW);
             toggleAvailable = false;
             delay(300); // Debounce delay
+
+            isRecording = !isRecording;
+            if (isRecording)
+            {
+                isRecording = recorder.startRecording("recording.wav");
+            }
+            else
+            {
+                recorder.stopRecording();
+            }
         }
         
         if (digitalRead(inputPin) == HIGH) // Button released
         {
             toggleAvailable = true;
         }
-        
-        // S.O.S. pattern
-        // shortFlash(breadboardPin);
-        // shortFlash(breadboardPin);
-        // shortFlash(breadboardPin);
-        
-        // longFlash(breadboardPin);
-        // longFlash(breadboardPin);
-        // longFlash(breadboardPin);
 
-        // shortFlash(breadboardPin);
-        // shortFlash(breadboardPin);
-        // shortFlash(breadboardPin);
-
-        // delay(1000);
+        if (isRecording)
+        {
+            recorder.recordChunk();
+        }
     }
 }
