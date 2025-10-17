@@ -1,3 +1,4 @@
+#pragma once
 #include "wavHeader.h"
 #include <alsa/asoundlib.h>
 

@@ -1,53 +1,65 @@
 #include "Audio/audioRecorder.h"
+#include "Audio/VTT.h"
 
 #include <iostream>
 #include <wiringPi.h>
+#include <filesystem>
 
 int main(int, char **)
 {
-    wiringPiSetupGpio();
-
-    int breadboardPin = 4; // GPIO pin 4 (Physical pin 7)
-    int inputPin = 16; // Physical pin 36
-
-    bool lightOn = false;
-    bool toggleAvailable = true;
+    std::string modelPath = "ThirdParty/whisper.cpp/models/ggml-tiny.en.bin";
+    std::cerr << "Trying to open model: " << std::filesystem::absolute(modelPath) << "\n";
     
-    pinMode(breadboardPin, OUTPUT);
-    pinMode(inputPin, INPUT);
-    pullUpDnControl(inputPin, PUD_UP); // Enable pull-up resistor
-
-    AudioRecorder recorder{ true };
-    bool isRecording = false;
-
-    while (true)
+    VTT vtt;
+    if (!vtt.Initialize(modelPath))
     {
-        if (digitalRead(inputPin) == LOW && toggleAvailable) // Button pressed
-        {
-            lightOn = !lightOn;
-            digitalWrite(breadboardPin, lightOn ? HIGH : LOW);
-            toggleAvailable = false;
-            delay(300); // Debounce delay
-
-            isRecording = !isRecording;
-            if (isRecording)
-            {
-                isRecording = recorder.startRecording("recording.wav");
-            }
-            else
-            {
-                recorder.stopRecording();
-            }
-        }
-        
-        if (digitalRead(inputPin) == HIGH) // Button released
-        {
-            toggleAvailable = true;
-        }
-
-        if (isRecording)
-        {
-            recorder.recordChunk();
-        }
+        return -1;
     }
+    std::string result = vtt.Transcribe("build/Audio/recording.wav");
+    
+    // wiringPiSetupGpio();
+
+    // int breadboardPin = 4; // GPIO pin 4 (Physical pin 7)
+    // int inputPin = 16; // Physical pin 36
+
+    // bool lightOn = false;
+    // bool toggleAvailable = true;
+    
+    // pinMode(breadboardPin, OUTPUT);
+    // pinMode(inputPin, INPUT);
+    // pullUpDnControl(inputPin, PUD_UP); // Enable pull-up resistor
+
+    // AudioRecorder recorder{ true };
+    // bool isRecording = false;
+
+    // while (true)
+    // {
+    //     if (digitalRead(inputPin) == LOW && toggleAvailable) // Button pressed
+    //     {
+    //         lightOn = !lightOn;
+    //         digitalWrite(breadboardPin, lightOn ? HIGH : LOW);
+    //         toggleAvailable = false;
+    //         delay(300); // Debounce delay
+
+    //         isRecording = !isRecording;
+    //         if (isRecording)
+    //         {
+    //             isRecording = recorder.startRecording("recording.wav");
+    //         }
+    //         else
+    //         {
+    //             recorder.stopRecording();
+    //         }
+    //     }
+        
+    //     if (digitalRead(inputPin) == HIGH) // Button released
+    //     {
+    //         toggleAvailable = true;
+    //     }
+
+    //     if (isRecording)
+    //     {
+    //         recorder.recordChunk();
+    //     }
+    // }
 }
