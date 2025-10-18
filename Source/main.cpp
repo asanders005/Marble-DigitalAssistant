@@ -10,6 +10,11 @@ int main(int, char **)
     std::string modelPath = "ThirdParty/whisper.cpp/models/ggml-tiny.en.bin";
     std::cerr << "Trying to open model: " << std::filesystem::absolute(modelPath) << "\n";
     
+    if (!std::filesystem::exists(modelPath)) {
+        std::cerr << "Model file not found: " << std::filesystem::absolute(modelPath) << '\n';
+        return -1;
+    }
+    
     VTT vtt;
     if (!vtt.Initialize(modelPath))
     {
