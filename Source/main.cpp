@@ -1,40 +1,56 @@
 #include "Audio/audioRecorder.h"
-#include "Audio/VTT.h"
+#include "Audio/RealtimeTranscriber.h"
+#include "Audio/PCMQueue.h"
+#include "Hardware/Pinboard.h"
 
 #include <iostream>
+#include <memory>
 #include <wiringPi.h>
 #include <filesystem>
 
 int main(int, char **)
 {
-    std::string modelPath = "ThirdParty/whisper.cpp/models/ggml-tiny.en.bin";
-    std::cerr << "Trying to open model: " << std::filesystem::absolute(modelPath) << "\n";
+    Pinboard::initialize();
+
+    int breadboardPin = 4; // GPIO pin 4 (Physical pin 7)
+    int inputPin = 16; // Physical pin 36
+
+    Pinboard::setOutputPin(breadboardPin);
+    Pinboard::setInputPin(inputPin, PUD_UP);
     
-    if (!std::filesystem::exists(modelPath)) {
-        std::cerr << "Model file not found: " << std::filesystem::absolute(modelPath) << '\n';
-        return -1;
+    bool lightOn = false;
+    bool toggleAvailable = true;
+
+    std::shared_ptr<PCMQueue> pcmQueue = std::make_shared<PCMQueue>(10); // 64KB max size
+    AudioRecorder recorder{ false };
+    recorder.setPCMQueue(pcmQueue);
+
+    RealtimeTranscriber::Config config;
+    config.modelPath = "ThirdParty/whisper.cpp/models/ggml-tiny.en.bin";
+    config.threads = 1;
+    config.chunkSeconds = 1;
+
+    RealtimeTranscriber transcriber(*pcmQueue, config);
+    if (!transcriber.start()) {
+        std::cerr << "Failed to start RealtimeTranscriber" << std::endl;
+        return 1;
     }
     
-    VTT vtt;
-    if (!vtt.Initialize(modelPath))
+    recorder.startRecording();
+    
+    bool quit = false;
+    while (!quit)
     {
-        return -1;
+        if (digitalRead(inputPin) == LOW && toggleAvailable) // Button pressed
+        {
+            quit = true;
+        }
+        recorder.recordChunk();
     }
-    std::string result = vtt.Transcribe("build/Audio/recording.wav");
+
+    recorder.stopRecording();
+    transcriber.stop();
     
-    // wiringPiSetupGpio();
-
-    // int breadboardPin = 4; // GPIO pin 4 (Physical pin 7)
-    // int inputPin = 16; // Physical pin 36
-
-    // bool lightOn = false;
-    // bool toggleAvailable = true;
-    
-    // pinMode(breadboardPin, OUTPUT);
-    // pinMode(inputPin, INPUT);
-    // pullUpDnControl(inputPin, PUD_UP); // Enable pull-up resistor
-
-    // AudioRecorder recorder{ true };
     // bool isRecording = false;
 
     // while (true)

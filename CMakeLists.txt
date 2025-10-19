@@ -13,10 +13,14 @@ enable_testing()
 
 add_executable(${PROJECT_NAME} 
     Source/main.cpp
+    
     Source/Audio/audioRecorder.cpp
     Source/Audio/wavHeader.cpp
     Source/Audio/wavFileLoader.cpp
+    Source/Audio/RealtimeTranscriber.cpp
     Source/Audio/VTT.cpp
+    
+    Source/Hardware/Pinboard.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE asound)

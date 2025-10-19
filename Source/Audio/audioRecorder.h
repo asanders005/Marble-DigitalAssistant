@@ -1,7 +1,9 @@
 #pragma once
+#include "PCMQueue.h"
 #include "wavHeader.h"
 #include <alsa/asoundlib.h>
-#include <queue>
+#include <vector>
+#include <memory>
 
 #define PCM_MICROPHONE "plughw:3,0"
 
@@ -13,9 +15,20 @@ class AudioRecorder
 public:
     AudioRecorder(bool recordToWav = false);
     
-    bool startRecording(std::string filename = "recording.wav", int bytesPerSample = 2);
+    bool startRecording(std::string filename = "recording.wav");
+    bool startRecording(std::shared_ptr<PCMQueue> queue, std::string filename = "recording.wav")
+    {
+        setPCMQueue(queue);
+        return startRecording(filename);
+    }
+    
     void recordChunk();
     void stopRecording();
+
+    void setPCMQueue(std::shared_ptr<PCMQueue> queue) 
+    {
+        pcmQueue = queue;
+    }
     
 private:
     bool recordToWav = false;
@@ -23,7 +36,7 @@ private:
     std::ofstream wavFile;
     int bytesRecorded = 0;
 
-    std::queue<std::vector<char>> audioQueue;
+    std::shared_ptr<PCMQueue> pcmQueue;
 
 private:
     snd_pcm_t* pcmHandle;
@@ -33,6 +46,6 @@ private:
     unsigned int rate = 16000; // Sample rate
     int channels = 1;
     snd_pcm_uframes_t framesPerPeriod = 32;
-    char* buffer;    
+    std::vector<int16_t> buffer;    
     int bufferSize;
 };

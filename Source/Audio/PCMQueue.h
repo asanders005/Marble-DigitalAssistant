@@ -3,7 +3,10 @@
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <iostream>
 #include <mutex>
+#include <stdexcept>
+#include <thread>
 #include <vector>
 
 class PCMQueue
@@ -17,7 +20,6 @@ public:
     /**
      * Push a chunk of PCM data into the queue.
      * If the queue is full, this will block until space is available.
-     * @error Throws std::runtime_error if the queue is closed.
      */
     void Push(const Chunk& chunk);
 
@@ -54,3 +56,59 @@ private:
     size_t maxSize;
     bool closed;
 };
+
+// Inline implementations
+inline void PCMQueue::Push(const Chunk& chunk) {
+    std::unique_lock lock(mutex);
+    if (closed) std::cerr << "PCMQueue is closed" << std::endl;
+    if (maxSize > 0) {
+        cvNotFull.wait(lock, [&]{ return closed || queue.size() < maxSize; });
+        if (closed) std::cerr << "PCMQueue is closed" << std::endl;
+    }
+    queue.emplace_back(chunk);
+    cvNotEmpty.notify_one();
+}
+
+inline bool PCMQueue::Pop(Chunk& outChunk) {
+    std::unique_lock lock(mutex);
+    cvNotEmpty.wait(lock, [&]{ return closed || !queue.empty(); });
+    if (queue.empty()) return false;
+    outChunk = std::move(queue.front());
+    queue.pop_front();
+    if (maxSize > 0) cvNotFull.notify_one();
+    return true;
+}
+
+inline bool PCMQueue::TryPop(Chunk& outChunk) {
+    std::scoped_lock lock(mutex);
+    if (queue.empty()) return false;
+    outChunk = std::move(queue.front());
+    queue.pop_front();
+    if (maxSize > 0) cvNotFull.notify_one();
+    return true;
+}
+
+inline void PCMQueue::Close() {
+    {
+        std::scoped_lock lock(mutex);
+        closed = true;
+    }
+    cvNotEmpty.notify_all();
+    cvNotFull.notify_all();
+}
+
+inline size_t PCMQueue::Size() const {
+    std::scoped_lock lock(mutex);
+    return queue.size();
+}
+
+inline bool PCMQueue::Empty() const {
+    std::scoped_lock lock(mutex);
+    return queue.empty();
+}
+
+inline void PCMQueue::Clear() {
+    std::scoped_lock lock(mutex);
+    queue.clear();
+    if (maxSize > 0) cvNotFull.notify_all();
+}

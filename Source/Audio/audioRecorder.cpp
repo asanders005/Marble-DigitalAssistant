@@ -1,4 +1,6 @@
 #include "audioRecorder.h"
+#include <cstring>
+#include <iostream>
 
 AudioRecorder::AudioRecorder(bool recordToWav) : recordToWav(recordToWav)
 {
@@ -35,7 +37,7 @@ AudioRecorder::AudioRecorder(bool recordToWav) : recordToWav(recordToWav)
     }
 }
 
-bool AudioRecorder::startRecording(std::string filename, int bytesPerSample)
+bool AudioRecorder::startRecording(std::string filename)
 {
     if (recordToWav)
     {
@@ -52,10 +54,11 @@ bool AudioRecorder::startRecording(std::string filename, int bytesPerSample)
         wavHeader.writeHeader(wavFile);
     }
 
-    // calculate buffer size
+    // calculate buffer size (in samples)
     snd_pcm_hw_params_get_period_size(params, &frames, &dir);
-    bufferSize = frames * channels * bytesPerSample; // 2 bytes/sample, 1 channel
-    buffer = new char[bufferSize];
+    const int samplesPerPeriod = frames * channels; // samples (int16_t)
+    buffer.resize(samplesPerPeriod);
+    bufferSize = samplesPerPeriod * sizeof(int16_t); // bytes
 
     std::cout << "Recording started..." << std::endl;
     return true;
@@ -63,7 +66,8 @@ bool AudioRecorder::startRecording(std::string filename, int bytesPerSample)
 
 void AudioRecorder::recordChunk()
 {
-    pcm = snd_pcm_readi(pcmHandle, buffer, frames);
+    // read frames into int16_t buffer
+    pcm = snd_pcm_readi(pcmHandle, buffer.data(), frames);
     
     if (pcm == -EPIPE)
     {
@@ -74,14 +78,35 @@ void AudioRecorder::recordChunk()
     {
         fprintf(stderr, "Error from read: %s\n", snd_strerror(pcm));
     }
-    else
+    else if (pcm > 0)
     {
-        int bytesRead = pcm * channels * 2; // 2 bytes/sample, 1 channel
+        int framesRead = (int)pcm;
+        int bytesPerSample = sizeof(int16_t);
+        int samplesRead = framesRead * channels;
+        int bytesRead = samplesRead * bytesPerSample;
 
         if (recordToWav)
         {
-            wavFile.write(buffer, bufferSize);
+            // write raw bytes to WAV
+            wavFile.write(reinterpret_cast<const char *>(buffer.data()), bytesRead);
             bytesRecorded += bytesRead;
+        }
+
+        // push to queue if configured
+        if (pcmQueue)
+        {
+            PCMQueue::Chunk chunk;
+            chunk.resize(samplesRead);
+            // copy samples (int16_t)
+            std::memcpy(chunk.data(), buffer.data(), bytesRead);
+
+            try 
+            {
+                pcmQueue->Push(std::move(chunk));
+            } catch (const std::runtime_error& e) 
+            {
+                std::cerr << "Failed to push to PCMQueue: " << e.what() << std::endl;
+            }
         }
     }
 }
@@ -90,7 +115,7 @@ void AudioRecorder::stopRecording()
 {
     snd_pcm_drain(pcmHandle);
     snd_pcm_close(pcmHandle);
-    delete[] buffer;
+    buffer.clear();
 
     if (recordToWav)
     {
