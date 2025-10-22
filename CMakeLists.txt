@@ -12,12 +12,14 @@ include(CTest)
 enable_testing()
 
 add_executable(${PROJECT_NAME} 
-    Source/main.cpp
+    Source/Tools/wav_inference_test.cpp
     
     Source/Audio/audioRecorder.cpp
     Source/Audio/wavHeader.cpp
     Source/Audio/wavFileLoader.cpp
     Source/Audio/RealtimeTranscriber.cpp
+    Source/Audio/InferenceWorker.cpp
+    Source/Audio/InferencePool.cpp
     Source/Audio/VTT.cpp
     
     Source/Hardware/Pinboard.cpp

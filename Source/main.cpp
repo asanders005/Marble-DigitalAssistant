@@ -27,8 +27,10 @@ int main(int, char **)
 
     RealtimeTranscriber::Config config;
     config.modelPath = "ThirdParty/whisper.cpp/models/ggml-tiny.en.bin";
-    config.threads = 1;
-    config.chunkSeconds = 1;
+    // Raspberry Pi 4B typically has 4 hardware threads; don't exceed that.
+    unsigned int hw = std::thread::hardware_concurrency();
+    config.threads = static_cast<int>(std::min<unsigned int>(hw ? hw : 1, 4));
+    config.chunkSeconds = 2; // 2s chunks balance latency and throughput on Pi
 
     RealtimeTranscriber transcriber(*pcmQueue, config);
     if (!transcriber.start()) {

@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include "InferencePool.h"
 
 // Forward-declare whisper types to avoid including the header in the public API.
 extern "C" {
@@ -26,13 +27,13 @@ public:
     void stop();
 
 private:
-    void workerLoop();
+    void resultLoop();
 
     PCMQueue &queue_;
     Config cfg_;
-    std::unique_ptr<std::thread> worker_;
+    std::unique_ptr<std::thread> resultThread_;
     std::atomic<bool> running_{false};
 
-    // whisper context
-    whisper_context *ctx_ = nullptr;
+    // inference pool
+    std::unique_ptr<InferencePool> pool_;
 };
