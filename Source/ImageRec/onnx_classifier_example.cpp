@@ -4,21 +4,12 @@
 
 int main(int argc, char** argv) {
     std::string model = "build/Assets/onnx/mobilenetv2-12-int8.onnx";
-    std::string image = "build/Assets/images/dog.jpg";
+    std::string image = "build/Assets/Images/dog.jpg";
     std::string labels = "build/Assets/onnx/imagenet-simple-labels.json";
     int threads = 2;
 
     ONNXClassifier clf;
-    clf.setNumThreads(threads);
-    if (!clf.loadModel(model)) {
-        std::cerr << "Failed to load model: " << model << std::endl;
-        return 2;
-    }
-    if (!labels.empty()) {
-        if (!clf.loadLabels(labels)) {
-            std::cerr << "Warning: failed to load labels file: " << labels << std::endl;
-        }
-    }
+    clf.Initialize(model, labels, threads);
 
     cv::Mat img = cv::imread(image);
     if (img.empty()) {
