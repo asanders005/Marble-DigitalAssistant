@@ -91,23 +91,6 @@ void AudioRecorder::recordChunk()
             wavFile.write(reinterpret_cast<const char *>(buffer.data()), bytesRead);
             bytesRecorded += bytesRead;
         }
-
-        // push to queue if configured
-        if (pcmQueue)
-        {
-            PCMQueue::Chunk chunk;
-            chunk.resize(samplesRead);
-            // copy samples (int16_t)
-            std::memcpy(chunk.data(), buffer.data(), bytesRead);
-
-            try 
-            {
-                pcmQueue->Push(std::move(chunk));
-            } catch (const std::runtime_error& e) 
-            {
-                std::cerr << "Failed to push to PCMQueue: " << e.what() << std::endl;
-            }
-        }
     }
 }
 

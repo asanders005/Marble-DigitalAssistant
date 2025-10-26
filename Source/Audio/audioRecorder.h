@@ -1,5 +1,4 @@
 #pragma once
-#include "PCMQueue.h"
 #include "wavHeader.h"
 #include <alsa/asoundlib.h>
 #include <vector>
@@ -16,27 +15,15 @@ public:
     AudioRecorder(bool recordToWav = false);
     
     bool startRecording(std::string filename = "recording.wav");
-    bool startRecording(std::shared_ptr<PCMQueue> queue, std::string filename = "recording.wav")
-    {
-        setPCMQueue(queue);
-        return startRecording(filename);
-    }
     
     void recordChunk();
     void stopRecording();
-
-    void setPCMQueue(std::shared_ptr<PCMQueue> queue) 
-    {
-        pcmQueue = queue;
-    }
     
 private:
     bool recordToWav = false;
     WAVHeader wavHeader;
     std::ofstream wavFile;
     int bytesRecorded = 0;
-
-    std::shared_ptr<PCMQueue> pcmQueue;
 
 private:
     snd_pcm_t* pcmHandle;
