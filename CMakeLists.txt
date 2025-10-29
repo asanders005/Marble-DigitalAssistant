@@ -8,10 +8,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Find libcamera via pkg-config so we get proper include/link flags
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBCAMERA REQUIRED libcamera)
+find_package(Boost REQUIRED COMPONENTS program_options)
+
 include(CTest)
 enable_testing()
 
 add_executable(${PROJECT_NAME} 
+    Source/main.cpp
     
     Source/Audio/audioRecorder.cpp
     Source/Audio/wavHeader.cpp
@@ -19,12 +25,15 @@ add_executable(${PROJECT_NAME}
     
     Source/Hardware/Pinboard.cpp
 
+    Source/Camera/PiCam.cpp
+    
     Source/ImageRec/onnx_classifier.cpp
-    Source/ImageRec/onnx_classifier_example.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE asound)
 target_link_libraries(${PROJECT_NAME} PRIVATE wiringPi)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBCAMERA_LIBRARIES} -lrpicam_app)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::program_options)
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_core.so
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_dnn.so
@@ -41,6 +50,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/imgcodecs/include
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build
     )
+target_include_directories(${PROJECT_NAME} PRIVATE /usr/include/rpicam-apps)
+target_include_directories(${PROJECT_NAME} PRIVATE ${LIBCAMERA_INCLUDE_DIRS})
+
+target_compile_options(${PROJECT_NAME} PRIVATE ${LIBCAMERA_CFLAGS_OTHER})
+
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
