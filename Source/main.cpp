@@ -77,38 +77,27 @@ int main(int, char **)
     bool quit = false;
     bool classifyImage = true;
 
-    while (true)
+    while (!quit)
     {
-        if (digitalRead(inputPin) == LOW && toggleAvailable) // Button pressed
+        auto img = camera.CaptureToMat(true);
+        if (!img.empty())
         {
-            lightOn = !lightOn;
-            digitalWrite(breadboardPin, lightOn ? HIGH : LOW);
-            
-            if (classifyImage)
+            auto res = clf.classify(img, 1);
+            std::cout << "Top prediction:\n";
+            if (!res.empty())
             {
-                auto img = camera.CaptureToMat(true);
-                if (!img.empty())
-                {
-                    auto res = clf.classify(img, 1);
-                    std::cout << "Top prediction:\n";
-                    if (!res.empty())
-                    {
-                        std::cout << "1: " << res[0].first << " (" << res[0].second << ")\n";
-                    }
-                }
-                else
-                {
-                    std::cerr << "Failed to open captured image." << std::endl;
-                }
+                std::cout << "1: " << res[0].first << " (" << res[0].second << ")\n";
             }
-
-            toggleAvailable = false;
-            delay(300); // Debounce delay
         }
-
-        if (digitalRead(inputPin) == HIGH) // Button released
+        else
         {
-            toggleAvailable = true;
+            std::cerr << "Failed to open captured image." << std::endl;
+        }
+        delay(2000); // Debounce delay
+
+        if (digitalRead(inputPin) == LOW)
+        {
+            quit = true;
         }
     }
     camera.Shutdown();
