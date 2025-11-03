@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/opencv.hpp>
 #include <wiringPi.h>
 
 int main(int, char **)
@@ -101,4 +102,5 @@ int main(int, char **)
         }
     }
     camera.Shutdown();
+    return 0;
 }

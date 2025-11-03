@@ -17,7 +17,7 @@ include(CTest)
 enable_testing()
 
 add_executable(${PROJECT_NAME} 
-    Source/main.cpp
+    Source/GStreamerTest.cpp
     
     Source/Audio/audioRecorder.cpp
     Source/Audio/wavHeader.cpp
@@ -39,6 +39,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_dnn.so
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_imgproc.so
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_imgcodecs.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_videoio.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_highgui.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_features2d.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_flann.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_ml.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_objdetect.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_photo.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_stitching.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_video.so
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_videoio.so
     )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/ThirdParty/WiringPi/wiringPi)
@@ -49,8 +59,20 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/imgproc/include
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/imgcodecs/include
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/calib3d/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/highgui/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/videoio/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/features2d/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/flann/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/ml/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/objdetect/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/photo/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/stitching/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/video/include
+    ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/videoio/include
     )
 target_include_directories(${PROJECT_NAME} PRIVATE /usr/include/rpicam-apps)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/include)
 target_include_directories(${PROJECT_NAME} PRIVATE ${LIBCAMERA_INCLUDE_DIRS})
 
 target_compile_options(${PROJECT_NAME} PRIVATE ${LIBCAMERA_CFLAGS_OTHER})

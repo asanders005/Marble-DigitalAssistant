@@ -1,6 +1,7 @@
 #include "onnx_classifier.h"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 
@@ -10,6 +11,13 @@ ONNXClassifier::ONNXClassifier() {}
 
 bool ONNXClassifier::Initialize(const std::string &modelPath, const std::string &labelsPath, int threadCount) {
     setNumThreads(threadCount);
+    // Helpful diagnostic: print absolute model path and existence
+    try {
+        std::filesystem::path p(modelPath);
+        std::cerr << "[ONNXClassifier] Initialize: modelPath=" << modelPath << " absolute=" << std::filesystem::absolute(p) << " exists=" << std::filesystem::exists(p) << std::endl;
+    } catch (...) {
+        std::cerr << "[ONNXClassifier] Initialize: filesystem diagnostic failed for modelPath=" << modelPath << std::endl;
+    }
     if (!loadModel(modelPath)) {
         std::cerr << "Failed to load model: " << modelPath << std::endl;
         return false;
@@ -66,8 +74,16 @@ void ONNXClassifier::setNumThreads(int n) {
 }
 
 cv::Mat ONNXClassifier::preprocess(const cv::Mat &img) const {
+    if (img.empty()) {
+        std::cerr << "[ONNXClassifier] preprocess: input image is empty\n";
+        return cv::Mat();
+    }
     cv::Mat resized;
     cv::resize(img, resized, inputSize_);
+    if (resized.empty()) {
+        std::cerr << "[ONNXClassifier] preprocess: resized image is empty (inputSize=" << inputSize_ << ")\n";
+        return cv::Mat();
+    }
     cv::Mat blob;
     // blobFromImage: scalefactor will scale to [0,1]
     // Do not swap R/B here; we'll convert explicitly below to control channel order.
@@ -75,7 +91,10 @@ cv::Mat ONNXClassifier::preprocess(const cv::Mat &img) const {
     // convert blob (NCHW) to image, normalize, convert back
     std::vector<cv::Mat> imgs;
     cv::dnn::imagesFromBlob(blob, imgs);
-    if (imgs.empty()) return cv::Mat();
+    if (imgs.empty()) {
+        std::cerr << "[ONNXClassifier] preprocess: imagesFromBlob returned empty" << std::endl;
+        return cv::Mat();
+    }
     cv::Mat nm = imgs[0]; // HxWxC BGR
     cv::cvtColor(nm, nm, cv::COLOR_BGR2RGB);
     std::vector<cv::Mat> planes(3);
@@ -86,16 +105,38 @@ cv::Mat ONNXClassifier::preprocess(const cv::Mat &img) const {
     cv::merge(planes, nm);
     // create a single-image blob (NCHW) from the preprocessed image
     cv::Mat inBlob = cv::dnn::blobFromImage(nm);
+    if (inBlob.empty()) {
+        std::cerr << "[ONNXClassifier] preprocess: final blob is empty" << std::endl;
+    } else {
+        std::cerr << "[ONNXClassifier] preprocess: produced blob size=" << inBlob.size << " type=" << inBlob.type() << std::endl;
+    }
     return inBlob;
 }
 
+
 std::vector<std::pair<std::string,float>> ONNXClassifier::classify(const cv::Mat &img, int topK) {
     std::vector<std::pair<std::string,float>> results;
-    if (img.empty() || net_.empty()) return results;
+    if (img.empty()) {
+        std::cerr << "[ONNXClassifier] classify: input image empty\n";
+        return results;
+    }
+    if (net_.empty()) {
+        std::cerr << "[ONNXClassifier] classify: network is empty\n";
+        return results;
+    }
     cv::Mat input = preprocess(img);
-    if (input.empty()) return results;
+    if (input.empty()) {
+        std::cerr << "[ONNXClassifier] classify: preprocess returned empty input blob\n";
+        return results;
+    }
+    std::cerr << "[ONNXClassifier] classify: input blob shape (dims)=" << input.dims << " size[0]=" << input.size[0] << " size[1]=" << input.size[1] << " type=" << input.type() << std::endl;
     net_.setInput(input);
     cv::Mat prob = net_.forward();
+    if (prob.empty()) {
+        std::cerr << "[ONNXClassifier] classify: net.forward() returned empty mat\n";
+        return results;
+    }
+    std::cerr << "[ONNXClassifier] classify: output prob size=" << prob.size << " dims=" << prob.dims << " rows=" << prob.rows << " cols=" << prob.cols << std::endl;
     cv::Mat probMat = prob.reshape(1, 1);
     std::vector<std::pair<int,float>> idx;
     for (int i = 0; i < probMat.cols; ++i) {

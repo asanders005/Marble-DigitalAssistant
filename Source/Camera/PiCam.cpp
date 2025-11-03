@@ -218,6 +218,24 @@ cv::Mat PiCam::CaptureToMat(bool saveDebugJPEG)
     if (mem.empty() || mem[0].size() == 0)
         throw std::runtime_error("Captured empty image buffer");
 
+    // Quick win: if the camera returned a JPEG blob (common when encoding="jpg"),
+    // decode it directly with OpenCV rather than attempting fragile YUV/Bayer reinterprets.
+    // JPEG files start with 0xFF 0xD8.
+    try {
+        if (!mem.empty() && mem[0].size() >= 2 && mem[0][0] == static_cast<uint8_t>(0xFF) && mem[0][1] == static_cast<uint8_t>(0xD8)) {
+            std::vector<uint8_t> jpegBuf(mem[0].begin(), mem[0].end());
+            cv::Mat img = cv::imdecode(jpegBuf, cv::IMREAD_COLOR);
+            if (!img.empty()) {
+                if (saveDebugJPEG) cv::imwrite("build/Assets/Images/debug_from_jpeg.jpg", img);
+                return img;
+            } else {
+                std::cerr << "CaptureToMat: imdecode failed for JPEG buffer\n";
+            }
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "CaptureToMat: JPEG decode attempt threw: " << e.what() << "\n";
+    }
+
     // Try to be robust to several possible pixel layouts. Prefer BGR if the stream
     // was requested with FLAG_STILL_BGR, but some pipelines may still return YUV.
     int w = info.width;
