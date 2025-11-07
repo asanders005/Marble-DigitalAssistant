@@ -17,7 +17,7 @@ include(CTest)
 enable_testing()
 
 add_executable(${PROJECT_NAME} 
-    Source/GStreamerTest.cpp
+    Source/main.cpp
     
     Source/Audio/audioRecorder.cpp
     Source/Audio/wavHeader.cpp
@@ -25,7 +25,7 @@ add_executable(${PROJECT_NAME}
     
     Source/Hardware/Pinboard.cpp
 
-    Source/Camera/PiCam.cpp
+    Source/Camera/GStreamer.cpp
     
     Source/ImageRec/onnx_classifier.cpp
 )
