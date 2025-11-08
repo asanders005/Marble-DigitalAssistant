@@ -2,6 +2,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <string>
+#include <memory>
 
 class GStreamer
 {
@@ -13,6 +14,8 @@ public:
     };
 
 public:
+    GStreamer() { cap = std::make_unique<cv::VideoCapture>(); };
+
     bool openCapture(CaptureBackend backend, int w, int h, int fps);
     cv::Mat captureFrame();
 
@@ -23,5 +26,5 @@ private:
     bool open_capture_with_pipeline(const std::string &pipeline);
 
 private:
-    cv::VideoCapture cap;
+    std::unique_ptr<cv::VideoCapture> cap;
 };

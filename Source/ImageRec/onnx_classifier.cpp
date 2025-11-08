@@ -32,9 +32,9 @@ bool ONNXClassifier::Initialize(const std::string &modelPath, const std::string 
 
 bool ONNXClassifier::loadModel(const std::string &modelPath) {
     try {
-        net_ = cv::dnn::readNetFromONNX(modelPath);
-        net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
-        net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+        net_ = std::make_unique<cv::dnn::Net>(cv::dnn::readNetFromONNX(modelPath));
+        net_->setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+        net_->setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
     } catch (const std::exception &e) {
         std::cerr << "Failed to load model: " << e.what() << std::endl;
         return false;
@@ -107,9 +107,9 @@ cv::Mat ONNXClassifier::preprocess(const cv::Mat &img) const {
     cv::Mat inBlob = cv::dnn::blobFromImage(nm);
     if (inBlob.empty()) {
         std::cerr << "[ONNXClassifier] preprocess: final blob is empty" << std::endl;
-    } else {
-        std::cerr << "[ONNXClassifier] preprocess: produced blob size=" << inBlob.size << " type=" << inBlob.type() << std::endl;
-    }
+    } //else {
+    //     std::cerr << "[ONNXClassifier] preprocess: produced blob size=" << inBlob.size << " type=" << inBlob.type() << std::endl;
+    // }
     return inBlob;
 }
 
@@ -120,7 +120,7 @@ std::vector<std::pair<std::string,float>> ONNXClassifier::classify(const cv::Mat
         std::cerr << "[ONNXClassifier] classify: input image empty\n";
         return results;
     }
-    if (net_.empty()) {
+    if (net_->empty()) {
         std::cerr << "[ONNXClassifier] classify: network is empty\n";
         return results;
     }
@@ -129,14 +129,14 @@ std::vector<std::pair<std::string,float>> ONNXClassifier::classify(const cv::Mat
         std::cerr << "[ONNXClassifier] classify: preprocess returned empty input blob\n";
         return results;
     }
-    std::cerr << "[ONNXClassifier] classify: input blob shape (dims)=" << input.dims << " size[0]=" << input.size[0] << " size[1]=" << input.size[1] << " type=" << input.type() << std::endl;
-    net_.setInput(input);
-    cv::Mat prob = net_.forward();
+    //std::cerr << "[ONNXClassifier] classify: input blob shape (dims)=" << input.dims << " size[0]=" << input.size[0] << " size[1]=" << input.size[1] << " type=" << input.type() << std::endl;
+    net_->setInput(input);
+    cv::Mat prob = net_->forward();
     if (prob.empty()) {
         std::cerr << "[ONNXClassifier] classify: net.forward() returned empty mat\n";
         return results;
     }
-    std::cerr << "[ONNXClassifier] classify: output prob size=" << prob.size << " dims=" << prob.dims << " rows=" << prob.rows << " cols=" << prob.cols << std::endl;
+    //std::cerr << "[ONNXClassifier] classify: output prob size=" << prob.size << " dims=" << prob.dims << " rows=" << prob.rows << " cols=" << prob.cols << std::endl;
     cv::Mat probMat = prob.reshape(1, 1);
     std::vector<std::pair<int,float>> idx;
     for (int i = 0; i < probMat.cols; ++i) {

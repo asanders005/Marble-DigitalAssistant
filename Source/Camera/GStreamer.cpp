@@ -27,7 +27,7 @@ bool GStreamer::openCapture(CaptureBackend backend, int w, int h, int fps)
 cv::Mat GStreamer::captureFrame()
 {
     cv::Mat frame;
-    if (!cap.read(frame) || frame.empty())
+    if (!cap->read(frame) || frame.empty())
     {
         throw std::runtime_error("Failed to read frame from GStreamer capture.");
     }
@@ -67,17 +67,17 @@ bool GStreamer::open_capture_with_pipeline(const std::string &pipeline)
     if (!std::getenv("GST_DEBUG"))
         setenv("GST_DEBUG", "3", 0);
 
-    cap.open(pipeline, cv::CAP_GSTREAMER);
-    if (!cap.isOpened())
+    cap->open(pipeline, cv::CAP_GSTREAMER);
+    if (!cap->isOpened())
     {
         std::cerr << "cv::VideoCapture failed to open pipeline.\n";
         return false;
     }
 
     // Try to query a few properties; if these fail the pipeline didn't negotiate caps
-    double w = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    double h = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-    double fps = cap.get(cv::CAP_PROP_FPS);
+    double w = cap->get(cv::CAP_PROP_FRAME_WIDTH);
+    double h = cap->get(cv::CAP_PROP_FRAME_HEIGHT);
+    double fps = cap->get(cv::CAP_PROP_FPS);
     //std::cerr << "Opened capture: width=" << w << " height=" << h << " fps=" << fps << std::endl;
 
     // If width/height/fps are not reported, the pipeline likely didn't negotiate caps.
@@ -86,7 +86,7 @@ bool GStreamer::open_capture_with_pipeline(const std::string &pipeline)
     {
         std::cerr << "Capture opened but video properties invalid (caps negotiation likely "
                      "failed). Releasing and reporting failure.\n";
-        cap.release();
+        cap->release();
         return false;
     }
 
