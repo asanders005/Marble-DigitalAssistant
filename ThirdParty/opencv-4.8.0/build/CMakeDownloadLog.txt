@@ -1,0 +1,5 @@
+#use_cache "/home/asanders/MarbleCodeBase/ThirdParty/opencv-4.8.0/.cache"
+#do_unpack "v0.1.2a.zip" "fa4b3e25167319cb0fa9432ef8281945" "https://github.com/opencv/ade/archive/v0.1.2a.zip" "/home/asanders/MarbleCodeBase/ThirdParty/opencv-4.8.0/build/3rdparty/ade"
+#check_md5 "/home/asanders/MarbleCodeBase/ThirdParty/opencv-4.8.0/.cache/ade/fa4b3e25167319cb0fa9432ef8281945-v0.1.2a.zip"
+#mkdir "/home/asanders/MarbleCodeBase/ThirdParty/opencv-4.8.0/build/3rdparty/ade"
+#unpack "/home/asanders/MarbleCodeBase/ThirdParty/opencv-4.8.0/build/3rdparty/ade" "/home/asanders/MarbleCodeBase/ThirdParty/opencv-4.8.0/.cache/ade/fa4b3e25167319cb0fa9432ef8281945-v0.1.2a.zip"

@@ -12,13 +12,18 @@
 bool GStreamer::openCapture(CaptureBackend backend, int w, int h, int fps)
 {
     std::string pipeline;
+
+    this->w = w;
+    this->h = h;
+    this->fps = fps;
+    
     if (backend == CaptureBackend::LIBCAMERA)
     {
-        pipeline = gst_pipeline_libcamera(w, h, fps);
+        pipeline = gst_pipeline_libcamera();
     }
     else // V4L2
     {
-        pipeline = gst_pipeline_v4l2(w, h, fps);
+        pipeline = gst_pipeline_v4l2();
     }
 
     return open_capture_with_pipeline(pipeline);
@@ -31,13 +36,57 @@ cv::Mat GStreamer::captureFrame()
     {
         throw std::runtime_error("Failed to read frame from GStreamer capture.");
     }
+    writeFrame(frame);
+    
     return frame;
+}
+
+void GStreamer::writeFrame(const cv::Mat& frame)
+{
+    if (isRecording()) {
+        if (frame.size() != cv::Size(w, h)) 
+        {
+            cv::resize(frame, frame, cv::Size(w, h));
+        }
+        writer->write(frame);
+    }
+}
+
+bool GStreamer::startRecording(const std::string& filename)
+{
+    if (isRecording()) {
+        std::cerr << "Recording already in progress.\n";
+        return false;
+    }
+    recordingFilename = "build/Assets/Video/" + filename;
+
+    std::string pipeline = get_pipeline_encoderMp4();
+
+    // Use CAP_GSTREAMER backend
+    writer = std::make_unique<cv::VideoWriter>(pipeline, cv::CAP_GSTREAMER, 0, static_cast<double>(fps), cv::Size(w, h), true);
+    
+
+    if (!writer->isOpened()) {
+        std::cerr << "GStreamer VideoWriter failed to open pipeline: " << pipeline << std::endl;
+        writer.reset();
+        return false;
+    }
+
+    return true;
+}
+
+void GStreamer::stopRecording()
+{
+    if (isRecording()) {
+        writer->release();
+        writer.reset();
+    }
 }
 
 // Build a safer libcamerasrc pipeline: avoid forcing a possibly-unsupported format
 // and let videoconvert handle conversions. End with appsink with a name so
 // OpenCV can negotiate caps.
-std::string GStreamer::gst_pipeline_libcamera(int w, int h, int fps)
+std::string GStreamer::gst_pipeline_libcamera()
 {
     std::ostringstream ss;
     ss << "libcamerasrc ! video/x-raw,width=" << w << ",height=" << h << ",framerate=" << fps
@@ -48,13 +97,25 @@ std::string GStreamer::gst_pipeline_libcamera(int w, int h, int fps)
 }
 
 // v4l2 path: prefer to ask for a common raw format and convert downstream.
-std::string GStreamer::gst_pipeline_v4l2(int w, int h, int fps)
+std::string GStreamer::gst_pipeline_v4l2()
 {
     std::ostringstream ss;
     ss << "v4l2src device=/dev/video0 ! video/x-raw,width=" << w << ",height=" << h
        << ",framerate=" << fps << "/1 "
        << "! videoconvert ! video/x-raw,format=BGR ! appsink name=appsink emit-signals=false "
           "sync=false max-buffers=1 drop=true";
+    return ss.str();
+}
+
+std::string GStreamer::get_pipeline_encoderMp4()
+{
+    std::ostringstream ss;
+    ss  << "appsrc ! "
+        << "video/x-raw,format=BGR,width=" << w << ",height=" << h << ",framerate=" << fps << "/1 ! "
+        << "videoconvert ! "
+        << "x264enc bitrate=2000 speed-preset=ultrafast tune=zerolatency ! "
+        << "video/x-h264,stream-format=byte-stream ! "
+        << "h264parse ! mp4mux ! filesink location=" << recordingFilename << " sync=false";
     return ss.str();
 }
 

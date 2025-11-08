@@ -29,6 +29,7 @@ int main()
             return 1;
         }
     }
+    gst->startRecording("output.mp4");
 
     float predictionDelay = 1000.0f; // milliseconds between predictions
     float currentTime = static_cast<float>(cv::getTickCount()) / cv::getTickFrequency() * 1000.0f;
@@ -55,5 +56,6 @@ int main()
         if (cv::waitKey(1) == 27)
             break; // ESC to exit
     }
+    gst->stopRecording();
     return 0;
 }
