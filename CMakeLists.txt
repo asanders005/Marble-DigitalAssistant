@@ -26,6 +26,7 @@ add_executable(${PROJECT_NAME}
     Source/Hardware/Pinboard.cpp
 
     Source/Camera/GStreamer.cpp
+    Source/Camera/GstRecorder.cpp
     
     Source/ImageRec/onnx_classifier.cpp
 )
@@ -72,6 +73,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/modules/videoio/include
     )
 target_include_directories(${PROJECT_NAME} PRIVATE /usr/include/rpicam-apps)
+target_include_directories(${PROJECT_NAME} PRIVATE /usr/include/gstreamer-1.0)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/include)
 target_include_directories(${PROJECT_NAME} PRIVATE ${LIBCAMERA_INCLUDE_DIRS})
 

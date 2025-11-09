@@ -1,4 +1,5 @@
 #pragma once
+#include "GstRecorder.h"
 
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -28,6 +29,8 @@ public:
     void stopRecording();
 
 private:
+    double measureCaptureFps(int samples = 3);
+
     std::string gst_pipeline_libcamera();
     std::string gst_pipeline_v4l2();
     std::string get_pipeline_encoderMp4();
@@ -36,6 +39,7 @@ private:
 
 private:
     std::unique_ptr<cv::VideoCapture> cap;
+    std::unique_ptr<GstRecorder> recorder;
     std::unique_ptr<cv::VideoWriter> writer;
 
     int w, h, fps;

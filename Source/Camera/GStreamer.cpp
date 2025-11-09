@@ -10,6 +10,7 @@
 #include <vector>
 #include <wiringPi.h>
 #include <ctime>
+#include <chrono>
 
 // For recording
 static const int DEFAULT_BITRATE_KBPS = 2000;
@@ -71,11 +72,18 @@ bool GStreamer::startRecording(const std::string &filename, int bitrate_kbps)
     this->bitrate_kbps = bitrate_kbps;
     recordingFilename = "build/Assets/Video/" + filename;
 
+    // Determine effective fps for the writer. Prefer camera-negotiated fps if available,
+    // otherwise fall back to the requested fps. If camera reports 0, sample a few frames
+    // to estimate the real capture framerate.
+    double measured_fps = measureCaptureFps(8);
+    double effective_fps = (measured_fps > 0.5 && measured_fps < 120.0) ? measured_fps : static_cast<double>(fps);
+    fps = static_cast<int>(effective_fps);
+
     std::string pipeline = get_pipeline_encoderMp4();
 
     // Use CAP_GSTREAMER backend
     writer = std::make_unique<cv::VideoWriter>(pipeline, cv::CAP_GSTREAMER, 0,
-                                               static_cast<double>(fps), cv::Size(w, h), true);
+                                               effective_fps, cv::Size(w, h), true);
 
     if (!writer->isOpened())
     {
@@ -107,6 +115,25 @@ void GStreamer::stopRecording()
     }
 }
 
+double GStreamer::measureCaptureFps(int samples)
+{
+    if (!cap || !cap->isOpened() || samples <= 0)
+        return 0.0;
+    cv::Mat tmp;
+    int framesRetrieved = 0;
+
+    auto t0 = std::chrono::steady_clock::now();
+    for (int i = 0; i < samples; ++i)
+    {
+        if (!cap->read(tmp) || tmp.empty())
+            break;
+        ++framesRetrieved;
+    }
+    auto t1 = std::chrono::steady_clock::now();
+    double secs = std::chrono::duration_cast<std::chrono::duration<double>>(t1 - t0).count();
+    return (framesRetrieved > 1 && secs > 0.0) ? static_cast<double>(framesRetrieved) / secs : 0.0;
+}
+
 // Build a safer libcamerasrc pipeline: avoid forcing a possibly-unsupported format
 // and let videoconvert handle conversions. End with appsink with a name so
 // OpenCV can negotiate caps.
@@ -134,8 +161,8 @@ std::string GStreamer::gst_pipeline_v4l2()
 std::string GStreamer::get_pipeline_encoderMp4()
 {
     std::ostringstream ss;
-    ss << "appsrc name = appsrc0 is-live=true do-timestamp=true format=time block=true ! "
-       << "video/x-raw,format=BGR,width=" << w << ",height=" << h << ",framerate=" << fps << "/1 ! "
+    ss << "appsrc name=appsrc0 is-live=true do-timestamp=true format=time block=true ! "
+       << "video/x-raw,format=BGR,width=" << w << ",height=" << h << " ! "
        << "videoconvert ! videorate ! video/x-raw,framerate=" << fps << "/1 ! "
        << "queue ! x264enc bitrate=" << bitrate_kbps
        << " speed-preset=ultrafast tune=zerolatency ! "
