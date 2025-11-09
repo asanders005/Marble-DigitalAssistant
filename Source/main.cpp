@@ -29,18 +29,21 @@ int main()
             return 1;
         }
     }
-    gst->startRecording("output.mp4");
+    gst->startRecordingDateTime();
 
     float predictionDelay = 1000.0f; // milliseconds between predictions
     float currentTime = static_cast<float>(cv::getTickCount()) / cv::getTickFrequency() * 1000.0f;
     float lastPredictionTime = 0.0f;
 
+    float videoLengthMs = 3600000.0f; // 1 hour
+    float endTime = currentTime + videoLengthMs;
+    
     while (true)
     {
         cv::Mat frame = gst->captureFrame();
 
         currentTime = static_cast<float>(cv::getTickCount()) / cv::getTickFrequency() * 1000.0f;
-        if (!(currentTime - lastPredictionTime < predictionDelay))
+        if (currentTime - lastPredictionTime >= predictionDelay)
         {
             auto res = clf->classify(frame, 1);
             std::cout << "Top prediction:\n";
@@ -49,6 +52,12 @@ int main()
                 std::cout << "1: " << res[0].first << " (" << res[0].second << ")\n";
             }
             lastPredictionTime = currentTime;
+        }
+        if (currentTime >= endTime)
+        {
+            gst->stopRecording();
+            gst->startRecordingDateTime();
+            endTime = currentTime + videoLengthMs;
         }
 
         // For debugging show the frame:

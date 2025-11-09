@@ -20,7 +20,8 @@ public:
     cv::Mat captureFrame();
     void writeFrame(const cv::Mat& frame);
 
-    bool startRecording(const std::string& filename);
+    bool startRecording(const std::string& filename, int bitrate_kbps = 2000);
+    bool startRecordingDateTime(int bitrate_kbps = 2000, const std::string& filenamePrefix = "");
     bool isRecording() const {
         return (writer && writer->isOpened());
     }
@@ -38,5 +39,6 @@ private:
     std::unique_ptr<cv::VideoWriter> writer;
 
     int w, h, fps;
+    int bitrate_kbps;
     std::string recordingFilename;
 };
