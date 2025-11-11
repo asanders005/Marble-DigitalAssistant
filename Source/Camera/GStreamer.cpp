@@ -47,7 +47,7 @@ cv::Mat GStreamer::captureFrame()
     return frame;
 }
 
-void GStreamer::writeFrame(const cv::Mat &frame)
+void GStreamer::writeFrame(const cv::Mat& frame)
 {
     if (!isRecording() || frame.empty())
         return;
@@ -77,7 +77,22 @@ bool GStreamer::startRecording(const std::string &filename, int bitrate_kbps)
     // Determine effective fps for the writer. Prefer camera-negotiated fps if available,
     // otherwise fall back to the requested fps. If camera reports 0, sample a few frames
     // to estimate the real capture framerate.
-    double measured_fps = measureCaptureFps(8);
+    double cam_reported_fps = 0.0;
+    if (cap && cap->isOpened())
+        cam_reported_fps = cap->get(cv::CAP_PROP_FPS);
+
+    double measured_fps = 0.0;
+    if (cam_reported_fps > 0.5 && cam_reported_fps < 120.0)
+    {
+        measured_fps = cam_reported_fps;
+        std::cerr << "[GStreamer] Using camera-reported FPS=" << measured_fps << "\n";
+    }
+    else
+    {
+        measured_fps = measureCaptureFps(8);
+        std::cerr << "[GStreamer] Measured FPS=" << measured_fps << " (camera reported=" << cam_reported_fps << ")\n";
+    }
+
     double effective_fps = (measured_fps > 0.5 && measured_fps < 120.0) ? measured_fps : static_cast<double>(fps);
     fps = static_cast<int>(effective_fps);
 

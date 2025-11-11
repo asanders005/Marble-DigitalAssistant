@@ -82,6 +82,9 @@ bool GstRecorder::start(const std::string& filename)
         frameDuration = GST_SECOND / 30; // fallback
     }
 
+    // establish base time for timestamping (steady clock)
+    baseTime = std::chrono::steady_clock::now();
+
     // Set pipeline state to PLAYING
     GstStateChangeReturn ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE)
@@ -96,6 +99,9 @@ bool GstRecorder::start(const std::string& filename)
 
     running.store(true);
     recorderThread = std::thread(&GstRecorder::recorderThreadFunc, this);
+
+    // diagnostic print
+    std::cerr << "[GstRecorder] started filename='" << filename << "' fps=" << fps << " frameDuration=" << frameDuration << " ns\n";
     return true;
 }
 
@@ -103,13 +109,14 @@ bool GstRecorder::pushFrame(const cv::Mat& frame)
 {
     if (!running.load()) return false;
 
+    auto now = std::chrono::steady_clock::now();
     std::lock_guard<std::mutex> lk(queueMutex);
     if (frameQueue.size() >= maxQueueSize)
     {
         // Drop frame if queue is full
         return false;
     }
-    frameQueue.push_back(frame.clone());
+    frameQueue.emplace_back(frame.clone(), now);
     queueCondVar.notify_one();
     return true;
 }
@@ -178,20 +185,31 @@ void GstRecorder::recorderThreadFunc()
 {
     while (!stopRequested.load()) {
         cv::Mat frame;
+        TimePoint frameStamp;
         {
             std::unique_lock<std::mutex> lk(queueMutex);
             if (frameQueue.empty()) {
                 queueCondVar.wait_for(lk, std::chrono::milliseconds(100));
                 if (frameQueue.empty()) continue;
             }
-            frame = std::move(frameQueue.front());
+            auto p = std::move(frameQueue.front());
+            frame = std::move(p.first);
+            frameStamp = p.second;
             frameQueue.pop_front();
         }
         if (frame.empty()) continue;
 
-    // compute PTS based on frame index and precomputed frameDuration
-    GstClockTime pts = frameIndex * frameDuration;
-    GstBuffer *buf = matToGstBuffer(frame, pts);
+        // compute PTS from the capture timestamp stored with the frame
+        GstClockTime pts = 0;
+        GstClockTime duration_ns = 0;
+        {
+            auto tp = frameStamp;
+            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(tp - baseTime).count();
+            if (ns < 0) ns = 0;
+            pts = static_cast<GstClockTime>(ns);
+            duration_ns = frameDuration; // keep nominal duration
+        }
+        GstBuffer *buf = matToGstBuffer(frame, pts);
         if (!buf) {
             std::cerr << "Failed to create GstBuffer\n";
             continue;
@@ -210,6 +228,11 @@ void GstRecorder::recorderThreadFunc()
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         } else {
             // pushed successfully
+            if (debugPrintCount < 5)
+            {
+                std::cerr << "[GstRecorder] pushed frameIndex=" << frameIndex << " pts=" << pts << " duration=" << frameDuration << "\n";
+                ++debugPrintCount;
+            }
             ++frameIndex;
         }
     }

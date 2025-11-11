@@ -10,6 +10,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <chrono>
 
 class GstRecorder
 {
@@ -49,7 +50,9 @@ private:
     GstElement* pipeline{ nullptr };
     GstAppSrc* appsrc{ nullptr };
 
-    std::deque<cv::Mat> frameQueue;
+    // store frame with its capture timestamp (steady clock)
+    using TimePoint = std::chrono::steady_clock::time_point;
+    std::deque<std::pair<cv::Mat, TimePoint>> frameQueue;
     size_t maxQueueSize = 30;
     std::mutex queueMutex;
     std::condition_variable queueCondVar;
@@ -65,4 +68,8 @@ private:
     int bitrate_kbps = 2000;
     uint64_t frameIndex = 0;
     GstClockTime frameDuration = 0;
+    // small runtime debug counter to print first few PTS values
+    int debugPrintCount = 0;
+    // base time recorded at start() used to compute PTS from capture timestamps
+    TimePoint baseTime;
 };
