@@ -4,7 +4,7 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 
-#include <atomic
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
@@ -17,7 +17,20 @@ public:
     GstRecorder();
     ~GstRecorder();
 
+    bool configure(int width, int height, double fps, int bitrate_kbps = 2000, size_t maxQueueSize = 30) 
+    {
+        if (running.load()) return false;
+        
+        this->width = width;
+        this->height = height;
+        this->fps = fps;
+        this->bitrate_kbps = bitrate_kbps;
+        this->maxQueueSize = maxQueueSize;
+        return true;
+    }
+    
     bool start(const std::string& filename, int width, int height, double fps, int bitrate_kbps = 2000, size_t maxQueueSize = 30);
+    bool start(const std::string& filename);
     bool pushFrame(const cv::Mat& frame);
     bool isRunning() const {
         return running.load();
@@ -51,4 +64,5 @@ private:
     double fps = 0.0;
     int bitrate_kbps = 2000;
     uint64_t frameIndex = 0;
-}
+    GstClockTime frameDuration = 0;
+};

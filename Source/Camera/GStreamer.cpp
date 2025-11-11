@@ -56,17 +56,19 @@ void GStreamer::writeFrame(const cv::Mat &frame)
     {
         cv::Mat resized;
         cv::resize(frame, resized, cv::Size(w, h));
-        writer->write(resized);
+        recorder->pushFrame(resized);
+        //writer->write(resized);
     }
     else
-        writer->write(frame);
+        recorder->pushFrame(frame);
+        //writer->write(frame);
 }
 
 bool GStreamer::startRecording(const std::string &filename, int bitrate_kbps)
 {
     if (isRecording())
     {
-        std::cerr << "Recording already in progress.\n";
+        std::cerr << "[GStreamer Warning] Recording already in progress.\n";
         return false;
     }
     this->bitrate_kbps = bitrate_kbps;
@@ -79,20 +81,25 @@ bool GStreamer::startRecording(const std::string &filename, int bitrate_kbps)
     double effective_fps = (measured_fps > 0.5 && measured_fps < 120.0) ? measured_fps : static_cast<double>(fps);
     fps = static_cast<int>(effective_fps);
 
-    std::string pipeline = get_pipeline_encoderMp4();
-
-    // Use CAP_GSTREAMER backend
-    writer = std::make_unique<cv::VideoWriter>(pipeline, cv::CAP_GSTREAMER, 0,
-                                               effective_fps, cv::Size(w, h), true);
-
-    if (!writer->isOpened())
+    if (!recorder->start(recordingFilename, w, h, effective_fps, bitrate_kbps, 30))
     {
-        std::cerr << "GStreamer VideoWriter failed to open pipeline: " << pipeline << std::endl;
-        writer.reset();
+        std::cerr << "[GStreamer Error] Failed to start recorder.\n";
         return false;
     }
 
     return true;
+
+    // Use CAP_GSTREAMER backend
+    //std::string pipeline = get_pipeline_encoderMp4();
+    
+    //writer = std::make_unique<cv::VideoWriter>(pipeline, cv::CAP_GSTREAMER, 0, effective_fps, cv::Size(w, h), true);
+    
+    // if (!writer->isOpened())
+    // {
+    //     std::cerr << "GStreamer VideoWriter failed to open pipeline: " << pipeline << std::endl;
+    //     writer.reset();
+    //     return false;
+    // }
 }
 
 bool GStreamer::startRecordingDateTime(int bitrate_kbps, const std::string &filenamePrefix)
@@ -110,8 +117,9 @@ void GStreamer::stopRecording()
 {
     if (isRecording())
     {
-        writer->release();
-        writer.reset();
+        recorder->stop();
+        // writer->release();
+        // writer.reset();
     }
 }
 

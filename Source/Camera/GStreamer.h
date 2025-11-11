@@ -15,7 +15,11 @@ public:
     };
 
 public:
-    GStreamer() { cap = std::make_unique<cv::VideoCapture>(); };
+    GStreamer() 
+    { 
+        cap = std::make_unique<cv::VideoCapture>(); 
+        recorder = std::make_unique<GstRecorder>();
+    };
 
     bool openCapture(CaptureBackend backend, int w, int h, int fps);
     cv::Mat captureFrame();
@@ -24,10 +28,11 @@ public:
     bool startRecording(const std::string& filename, int bitrate_kbps = 2000);
     bool startRecordingDateTime(int bitrate_kbps = 2000, const std::string& filenamePrefix = "");
     bool isRecording() const {
-        return (writer && writer->isOpened());
+        return recorder->isRunning();
+        //return (writer && writer->isOpened());
     }
     void stopRecording();
-
+    
 private:
     double measureCaptureFps(int samples = 3);
 

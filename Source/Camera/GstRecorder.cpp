@@ -24,12 +24,15 @@ bool GstRecorder::start(const std::string& filename, int width, int height, doub
 {
     if (running.load()) return false;
 
+    configure(width, height, fps, bitrate_kbps, maxQueueSize);
+    return start(filename);
+}
+
+bool GstRecorder::start(const std::string& filename)
+{
+    if (running.load()) return false;
+
     this->filename = filename;
-    this->width = width;
-    this->height = height;
-    this->fps = fps;
-    this->bitrate_kbps = bitrate_kbps;
-    this->maxQueueSize = maxQueueSize;
 
     frameIndex = 0;
     stopRequested.store(false);
@@ -45,7 +48,7 @@ bool GstRecorder::start(const std::string& filename, int width, int height, doub
     }
 
     // Get appsrc element by name ("src")
-    appsrc = gst_bin_get_by_name(GST_BIN(pipeline), "src");
+    appsrc = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(pipeline), "src"));
     if (!appsrc)
     {
         std::cerr << "Failed to get appsrc from pipeline\n";
@@ -65,8 +68,19 @@ bool GstRecorder::start(const std::string& filename, int width, int height, doub
     gst_app_src_set_caps(GST_APP_SRC(appsrc), caps);
     gst_caps_unref(caps);
 
-    // Ensure appsrc blocks when queue is full
+    // Ensure appsrc blocks when queue is full and use time format for buffers
     g_object_set(G_OBJECT(appsrc), "stream-type", GST_APP_STREAM_TYPE_STREAM, NULL);
+    g_object_set(G_OBJECT(appsrc), "format", GST_FORMAT_TIME, NULL);
+
+    // Precompute frame duration (use floating math for fractional fps)
+    if (fps > 0.0)
+    {
+        frameDuration = static_cast<GstClockTime>((double)GST_SECOND / fps + 0.5);
+    }
+    else
+    {
+        frameDuration = GST_SECOND / 30; // fallback
+    }
 
     // Set pipeline state to PLAYING
     GstStateChangeReturn ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
@@ -110,12 +124,38 @@ void GstRecorder::stop()
     if (recorderThread.joinable())
         recorderThread.join();
 
-    // push EOS to appsrc
+    // Push EOS to appsrc so the pipeline can finish and mp4mux can write the file tail
     if (appsrc)
         gst_app_src_end_of_stream(GST_APP_SRC(appsrc));
 
-    gst_element_send_event(pipeline, gst_event_new_eos());
-    gst_element_set_state(pipeline, GST_STATE_NULL);
+    // Also send an EOS event to the pipeline and wait for the EOS or ERROR message on the bus.
+    if (pipeline)
+    {
+        gst_element_send_event(pipeline, gst_event_new_eos());
+
+        GstBus* bus = gst_element_get_bus(pipeline);
+        if (bus)
+        {
+            // wait up to 5s for EOS/ERROR (adjust timeout if needed)
+            GstMessage* msg = gst_bus_timed_pop_filtered(bus, 5 * GST_SECOND,
+                static_cast<GstMessageType>(GST_MESSAGE_EOS | GST_MESSAGE_ERROR));
+            if (msg)
+            {
+                if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR)
+                {
+                    GError* err = nullptr;
+                    gst_message_parse_error(msg, &err, nullptr);
+                    std::cerr << "GStreamer pipeline error during EOS: " << (err ? err->message : "(unknown)") << std::endl;
+                    if (err) g_error_free(err);
+                }
+                gst_message_unref(msg);
+            }
+            gst_object_unref(bus);
+        }
+
+        // Now stop the pipeline cleanly
+        gst_element_set_state(pipeline, GST_STATE_NULL);
+    }
 
     if (appsrc)
     {
@@ -136,27 +176,27 @@ void GstRecorder::stop()
 
 void GstRecorder::recorderThreadFunc()
 {
-    while (!stopRequested_) {
+    while (!stopRequested.load()) {
         cv::Mat frame;
         {
-            std::unique_lock<std::mutex> lk(queueMutex_);
-            if (queue_.empty()) {
-                queueCv_.wait_for(lk, std::chrono::milliseconds(100));
-                if (queue_.empty()) continue;
+            std::unique_lock<std::mutex> lk(queueMutex);
+            if (frameQueue.empty()) {
+                queueCondVar.wait_for(lk, std::chrono::milliseconds(100));
+                if (frameQueue.empty()) continue;
             }
-            frame = std::move(queue_.front());
-            queue_.pop_front();
+            frame = std::move(frameQueue.front());
+            frameQueue.pop_front();
         }
         if (frame.empty()) continue;
 
-        // compute pts based on frame index and fps
-        GstClockTime pts = gst_util_uint64_scale(frameIndex_, GST_SECOND, static_cast<int>(std::round(fps_)));
-        GstBuffer *buf = matToGstBuffer(frame, pts);
+    // compute PTS based on frame index and precomputed frameDuration
+    GstClockTime pts = frameIndex * frameDuration;
+    GstBuffer *buf = matToGstBuffer(frame, pts);
         if (!buf) {
             std::cerr << "Failed to create GstBuffer\n";
             continue;
         }
-        GstFlowReturn fret = gst_app_src_push_buffer(GST_APP_SRC(appsrc_), buf);
+        GstFlowReturn fret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), buf);
         if (fret != GST_FLOW_OK) {
             std::cerr << "gst_app_src_push_buffer returned " << fret << std::endl;
             // if push fails, free buffer and consider retrying or dropping
@@ -170,7 +210,7 @@ void GstRecorder::recorderThreadFunc()
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         } else {
             // pushed successfully
-            ++frameIndex_;
+            ++frameIndex;
         }
     }
 
@@ -180,10 +220,13 @@ void GstRecorder::recorderThreadFunc()
 std::string GstRecorder::buildPipelineString()
 {
     std::ostringstream ss;
-    ss << "appsrc name=src is-live=true format=time do-timestamp=true block=true "
-       << "! videoconvert ! queue ! x264enc bitrate=" << bitrate_kbps_
+    // Request h264parse to periodically emit SPS/PPS (config-interval=1)
+    // and enable faststart on mp4mux so the moov atom is placed for easier playback.
+     // Do not set do-timestamp or is-live here — we will stamp buffers explicitly
+     ss << "appsrc name=src format=time block=true "
+         << "! videoconvert ! queue ! x264enc bitrate=" << bitrate_kbps
        << " speed-preset=ultrafast tune=zerolatency ! "
-       << "h264parse ! mp4mux ! filesink location=" << filename_;
+       << "h264parse config-interval=1 ! mp4mux faststart=true ! filesink location=" << filename;
     return ss.str();
 }
 
@@ -217,6 +260,7 @@ GstBuffer* GstRecorder::matToGstBuffer(const cv::Mat& frame, GstClockTime pts)
     }
 
     GST_BUFFER_PTS(buffer) = pts;
-    GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(GST_SECOND, 1, static_cast<int>(std::round(fps)));
+    GST_BUFFER_DTS(buffer) = pts;
+    GST_BUFFER_DURATION(buffer) = frameDuration;
     return buffer;
 }
