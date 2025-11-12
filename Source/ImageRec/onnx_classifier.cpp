@@ -22,6 +22,19 @@ bool ONNXClassifier::Initialize(const std::string &modelPath, const std::string 
         std::cerr << "Failed to load model: " << modelPath << std::endl;
         return false;
     }
+    // If inputSize_ wasn't set by the caller, default to a common YOLO export size
+    if (inputSize_.width <= 0 || inputSize_.height <= 0) {
+        inputSize_ = cv::Size(640, 640);
+        std::cout << "[ONNXClassifier] Initialize: inputSize not set, defaulting to " << inputSize_ << std::endl;
+    }
+    // Diagnostic: print unconnected outputs so user can see model output names
+    try {
+        auto outs = net_->getUnconnectedOutLayersNames();
+        std::cout << "[ONNXClassifier] model loaded. unconnected outputs:" << std::endl;
+        for (auto &n : outs) std::cout << "  " << n << std::endl;
+    } catch (...) {
+        std::cerr << "[ONNXClassifier] warning: failed to list output names" << std::endl;
+    }
     if (!labelsPath.empty()) {
         if (!loadLabels(labelsPath)) {
             std::cerr << "Warning: failed to load labels file: " << labelsPath << std::endl;

@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     //     return -1;
     // }
 
-    std::string modelPath = "build/Assets/onnx/model_simpl.onnx";
+    std::string modelPath = "build/Assets/onnx/model.onnx";
 
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_VERBOSE);
 
