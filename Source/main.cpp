@@ -8,8 +8,8 @@ int main()
     int W = 640, H = 480, FPS = 30;
 
     // Initialize ONNX Classifier
-    std::string model = "build/Assets/onnx/mobilenetv2-12-int8.onnx";
-    std::string labels = "build/Assets/onnx/imagenet-simple-labels.json";
+    std::string model = "build/Assets/onnx/model.onnx";
+    std::string labels = "build/Assets/onnx/labels.json";
     int threads = 2;
 
     std::unique_ptr<ONNXClassifier> clf = std::make_unique<ONNXClassifier>();

@@ -130,8 +130,14 @@ std::vector<std::pair<std::string,float>> ONNXClassifier::classify(const cv::Mat
         return results;
     }
     //std::cerr << "[ONNXClassifier] classify: input blob shape (dims)=" << input.dims << " size[0]=" << input.size[0] << " size[1]=" << input.size[1] << " type=" << input.type() << std::endl;
+    cv::Mat prob;
+    try {
     net_->setInput(input);
-    cv::Mat prob = net_->forward();
+    prob = net_->forward();
+    } catch (const std::exception &e) {
+        std::cerr << "[ONNXClassifier] classify: forward failed: " << e.what() << std::endl;
+        return results;
+    }
     if (prob.empty()) {
         std::cerr << "[ONNXClassifier] classify: net.forward() returned empty mat\n";
         return results;

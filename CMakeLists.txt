@@ -21,7 +21,7 @@ include(CTest)
 enable_testing()
 
 add_executable(${PROJECT_NAME} 
-    Source/main.cpp
+    Source/ImageRec/onnx_diagnostics.cpp
     
     Source/Audio/audioRecorder.cpp
     Source/Audio/wavHeader.cpp
