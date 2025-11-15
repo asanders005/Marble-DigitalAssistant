@@ -1,4 +1,4 @@
-#include "ImageRec/onnx_classifier.h"
+#include "ImageRec/YoloModel.h"
 #include "Camera/GStreamer.h"
 
 #include <memory>
@@ -8,14 +8,14 @@ int main()
     int W = 640, H = 480, FPS = 30;
 
     // Initialize ONNX Classifier
-    std::string model = "build/Assets/onnx/model.onnx";
-    std::string labels = "build/Assets/onnx/labels.json";
-    int threads = 2;
+    std::string modelPath = "build/Assets/onnx/model.onnx";
+    std::string labelsPath = "build/Assets/onnx/labels.json";
+    int threadCount = 2;
 
-    std::unique_ptr<ONNXClassifier> clf = std::make_unique<ONNXClassifier>();
-    if (!clf->Initialize(model, labels, threads))
+    std::unique_ptr<YOLOModel> model = std::make_unique<YOLOModel>();
+    if (!model->Initialize(modelPath, labelsPath, threadCount))
     {
-        std::cerr << "ONNXClassifier failed to initialize. Check model path and files. Exiting.\n";
+        std::cerr << "YOLOModel failed to initialize. Check model path and files. Exiting.\n";
         return 1;
     }
 
@@ -38,6 +38,7 @@ int main()
     float videoLengthMs = 3600000.0f; // 1 hour
     float endTime = currentTime + videoLengthMs;
     
+    std::vector<YoloDetection> detections;
     while (true)
     {
         cv::Mat frame = gst->captureFrame();
@@ -45,12 +46,12 @@ int main()
         currentTime = static_cast<float>(cv::getTickCount()) / cv::getTickFrequency() * 1000.0f;
         if (currentTime - lastPredictionTime >= predictionDelay)
         {
-            auto res = clf->classify(frame, 1);
-            std::cout << "Top prediction:\n";
-            if (!res.empty())
-            {
-                std::cout << "1: " << res[0].first << " (" << res[0].second << ")\n";
-            }
+            detections.clear();
+            detections = model->detect(frame, 0.6f, 0.45f);
+            if (detections.empty())
+                std::cout << "No detections.\n";
+            else
+                std::cout << "Detections: " << detections.size() << "\n";
             lastPredictionTime = currentTime;
         }
         if (currentTime >= endTime)
@@ -58,6 +59,14 @@ int main()
             gst->stopRecording();
             gst->startRecordingDateTime();
             endTime = currentTime + videoLengthMs;
+        }
+
+        for (const auto& det : detections)
+        {
+            cv::rectangle(frame, det.box, cv::Scalar(0, 255, 0), 2);
+            std::string label = "ID: " + std::to_string(det.trackId) + " Conf: " + std::to_string(det.score);
+            cv::putText(frame, label, cv::Point(det.box.x, det.box.y - 10),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
         }
 
         // For debugging show the frame:

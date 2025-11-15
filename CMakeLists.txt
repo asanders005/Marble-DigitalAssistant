@@ -21,7 +21,7 @@ include(CTest)
 enable_testing()
 
 add_executable(${PROJECT_NAME} 
-    Source/ImageRec/onnx_diagnostics.cpp
+    Source/main.cpp
     
     Source/Audio/audioRecorder.cpp
     Source/Audio/wavHeader.cpp
@@ -32,7 +32,7 @@ add_executable(${PROJECT_NAME}
     Source/Camera/GStreamer.cpp
     Source/Camera/GstRecorder.cpp
     
-    Source/ImageRec/onnx_classifier.cpp
+    Source/ImageRec/YoloModel.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/Source)
