@@ -8,8 +8,8 @@ int main()
     int W = 640, H = 480, FPS = 30;
 
     // Initialize ONNX Classifier
-    std::string modelPath = "build/Assets/onnx/model.onnx";
-    std::string labelsPath = "build/Assets/onnx/labels.json";
+    std::string modelPath = "build/Assets/onnx/yolov5n.onnx";
+    std::string labelsPath = "build/Assets/onnx/coco.yaml";
     int threadCount = 2;
 
     std::unique_ptr<YOLOModel> model = std::make_unique<YOLOModel>();
@@ -47,7 +47,7 @@ int main()
         if (currentTime - lastPredictionTime >= predictionDelay)
         {
             detections.clear();
-            detections = model->detect(frame, 0.6f, 0.45f);
+            detections = model->detect(frame, 0.5f, 0.5f);
             if (detections.empty())
                 std::cout << "No detections.\n";
             else
