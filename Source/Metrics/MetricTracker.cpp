@@ -56,7 +56,7 @@ bool MetricTracker::WriteToFile(const std::string& filename) const
         return false;
     }
 
-    json metricsJson;
+    nlohmann::json metricsJson;
     int totalPeople = 0;
     int totalPass = 0;
     int totalEnter = 0;

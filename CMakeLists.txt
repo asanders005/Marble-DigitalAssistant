@@ -16,6 +16,7 @@ pkg_check_modules(GSTREAMER_APP REQUIRED gstreamer-app-1.0)
 pkg_check_modules(GSTREAMER_VIDEO REQUIRED gstreamer-video-1.0)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 find_package(Boost REQUIRED COMPONENTS program_options)
+find_package(yaml-cpp REQUIRED)
 
 include(CTest)
 enable_testing()
@@ -100,6 +101,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_video.so
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_videoio.so
     )
+target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

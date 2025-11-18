@@ -8,7 +8,7 @@ int main()
     int W = 640, H = 480, FPS = 30;
 
     // Initialize ONNX Classifier
-    std::string modelPath = "build/Assets/onnx/yolov5n.onnx";
+    std::string modelPath = "build/Assets/onnx/yolov5n-CV-sim.onnx";
     std::string labelsPath = "build/Assets/onnx/coco.yaml";
     int threadCount = 2;
 
