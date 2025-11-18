@@ -13,8 +13,7 @@
 
 YOLOModel::YOLOModel() {}
 
-bool YOLOModel::Initialize(const std::string &modelPath, const std::string &labelsPath,
-                           int threadCount)
+bool YOLOModel::Initialize(const std::string& modelPath, const std::string& labelsPath, int threadCount)
 {
     cv::setNumThreads(threadCount);
     if (!loadModel(modelPath))
@@ -23,11 +22,23 @@ bool YOLOModel::Initialize(const std::string &modelPath, const std::string &labe
         return false;
     }
     if (!labelsPath.empty())
-        loadLabels(labelsPath);
+    {
+        if (!loadLabels(labelsPath))
+        {
+            std::cerr << "WARNING [YOLOModel::Initialize] Failed to load labels: " << labelsPath
+                      << std::endl;
+        }
+    }
+    else
+    {
+        std::cerr
+            << "WARNING [YOLOModel::Initialize] No labels path provided; proceeding without labels."
+            << std::endl;
+    }
     return true;
 }
 
-bool YOLOModel::loadModel(const std::string &modelPath)
+bool YOLOModel::loadModel(const std::string& modelPath)
 {
     try
     {
@@ -43,7 +54,7 @@ bool YOLOModel::loadModel(const std::string &modelPath)
     return true;
 }
 
-bool YOLOModel::loadLabels(const std::string &labelsPath)
+bool YOLOModel::loadLabels(const std::string& labelsPath)
 {
     labels.clear();
 
@@ -52,16 +63,52 @@ bool YOLOModel::loadLabels(const std::string &labelsPath)
     {
         try
         {
-            YAML::Node config = YAML::LoadFile(labelsPath);
-            if (config["names"] && config["names"].IsSequence())
+            YAML::Node yamlRoot = YAML::LoadFile(labelsPath);
+            if (yamlRoot["names"])
             {
-                for (const auto &nameNode : config["names"])
+                const auto& namesNode = yamlRoot["names"];
+                if (namesNode.IsSequence())
                 {
-                    if (nameNode.IsScalar())
+                    // std::cout << "[YOLOModel::loadLabels] 'names' node is a sequence; processing."
+                    //           << labelsPath << std::endl;
+
+                    for (const auto& nameNode : namesNode)
                     {
-                        labels.push_back(nameNode.as<std::string>());
+                        if (nameNode.IsScalar())
+                        {
+                            labels.push_back(nameNode.as<std::string>());
+                        }
                     }
                 }
+                else if (namesNode.IsMap())
+                {
+                    // std::cout << "[YOLOModel::loadLabels] 'names' node is a map; processing keys."
+                    //           << labelsPath << std::endl;
+
+                    // Collect keys and sort numerically
+                    std::vector<int> keys;
+                    for (auto it = namesNode.begin(); it != namesNode.end(); ++it)
+                    {
+                        keys.push_back(it->first.as<int>());
+                    }
+                    std::sort(keys.begin(), keys.end());
+                    for (int k : keys)
+                    {
+                        labels.push_back(namesNode[k].as<std::string>());
+                    }
+                }
+                else
+                {
+                    std::cerr << "[YOLOModel::loadLabels] 'names' node is neither sequence nor map: "
+                              << labelsPath << std::endl;
+                    return false;
+                }
+            }
+            else
+            {
+                std::cerr << "[YOLOModel::loadLabels] YAML file does not contain node 'names': "
+                          << labelsPath << std::endl;
+                return false;
             }
         }
         catch (const YAML::Exception &e)
@@ -69,6 +116,10 @@ bool YOLOModel::loadLabels(const std::string &labelsPath)
             std::cerr << "[YOLOModel::loadLabels] YAML exception: " << e.what() << std::endl;
             return false;
         }
+
+        std::cout << "[YOLOModel::loadLabels] loaded " << labels.size() << " labels from YAML file."
+                  << std::endl;
+
         return !labels.empty();
     }
 
@@ -81,8 +132,8 @@ bool YOLOModel::loadLabels(const std::string &labelsPath)
         nlohmann::json data = nlohmann::json::parse(ifs, nullptr, false);
         if (data.is_discarded())
         {
-            std::cerr << "[YOLOModel::loadLabels] Failed to parse JSON label file: "
-                      << labelsPath << std::endl;
+            std::cerr << "[YOLOModel::loadLabels] Failed to parse JSON label file: " << labelsPath
+                      << std::endl;
             return false;
         }
         if (data.is_array())
@@ -111,7 +162,7 @@ bool YOLOModel::loadLabels(const std::string &labelsPath)
     return !labels.empty();
 }
 
-std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThresh, float iouThresh)
+std::vector<YoloDetection> YOLOModel::detect(const cv::Mat& img, float confThresh, float iouThresh)
 {
     // Use stricter default thresholds if not provided
     if (confThresh < 1e-4f)
@@ -198,15 +249,15 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
                 ++countOverThresh;
         }
         std::cout << std::fixed << std::setprecision(6);
-        std::cout << "[YOLOModel::detect] attrs=" << attrs << " num_preds=" << num_preds
-                  << " rawMaxConf=" << rawMaxConf << " sigMaxConf=" << sigMaxConf
-                  << " >0.001=" << countOver001 << " >0.01=" << countOver01 << " >" << confThresh
-                  << "=" << countOverThresh << std::endl;
-        for (int r = 0; r < attrs; ++r)
-        {
-            std::cout << " attr[" << r << "] min=" << minAttr[r] << " max=" << maxAttr[r]
-                      << std::endl;
-        }
+        // std::cout << "[YOLOModel::detect] attrs=" << attrs << " num_preds=" << num_preds
+        //           << " rawMaxConf=" << rawMaxConf << " sigMaxConf=" << sigMaxConf
+        //           << " >0.001=" << countOver001 << " >0.01=" << countOver01 << " >" << confThresh
+        //           << "=" << countOverThresh << std::endl;
+        // for (int r = 0; r < attrs; ++r)
+        // {
+        //     std::cout << " attr[" << r << "] min=" << minAttr[r] << " max=" << maxAttr[r]
+        //               << std::endl;
+        // }
 
         // Print top-k predictions by confidence (useful to inspect units and values)
         int topk = std::min(10, num_preds);
@@ -308,11 +359,17 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
                 // find person index if present
                 int personIdx = -1;
                 for (size_t li = 0; li < labels.size(); ++li)
+                {
                     if (labels[li] == "person")
                     {
                         personIdx = (int)li;
                         break;
                     }
+                }
+                // std::cout << "[YOLOModel::detect] person class index = " << personIdx << std::endl;
+                // std::cout << "[YOLOModel::detect] predicted class index = " << predictedClass
+                //           << std::endl;
+
                 if (personIdx != -1 && predictedClass != personIdx)
                     continue; // skip non-person
             }
@@ -410,8 +467,8 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
         if (idxs.empty() && sigMaxConf > 0.0f && sigMaxConf < confThresh)
         {
             float confDebug = std::max(1e-6f, std::min(sigMaxConf, confThresh * 0.01f));
-            std::cout << "[YOLOModel::detect] no results with conf=" << confThresh
-                      << "; attempting debug pass with conf=" << confDebug << std::endl;
+            // std::cout << "[YOLOModel::detect] no results with conf=" << confThresh
+            //   << "; attempting debug pass with conf=" << confDebug << std::endl;
 
             std::vector<cv::Rect> dbgBoxes;
             std::vector<float> dbgScores;
@@ -455,7 +512,7 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
             {
                 std::vector<int> dbgIdxs;
                 cv::dnn::NMSBoxes(dbgBoxes, dbgScores, confDebug, iouThresh, dbgIdxs);
-                std::cout << "[YOLOModel::detect] debug pass found " << dbgIdxs.size() << " boxes"
+                std::cerr << "[YOLOModel::detect] debug pass found " << dbgIdxs.size() << " boxes"
                           << std::endl;
             }
         }
@@ -563,7 +620,8 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
                 merged.push_back(md);
             }
             dets.swap(merged);
-            std::cerr << "YOLOModel::detect: clustered to " << dets.size() << " boxes" << std::endl;
+            // std::cerr << "YOLOModel::detect: clustered to " << dets.size() << " boxes" <<
+            // std::endl;
         }
 
         // Simple IoU-based tracking using persistent track map (trackLastBox)

@@ -18,14 +18,14 @@ class YOLOModel
 {
 public:
     YOLOModel();
-    bool Initialize(const std::string &modelPath, const std::string &labelsPath, int threadCount = 1);
+    bool Initialize(const std::string& modelPath, const std::string& labelsPath, int threadCount = 1);
     // load model; returns true on success
-    bool loadModel(const std::string &modelPath);
+    bool loadModel(const std::string& modelPath);
     // load labels (supports simple newline list or JSON array of strings)
-    bool loadLabels(const std::string &labelsPath);
-
+    bool loadLabels(const std::string& labelsPath);
+    
     // Run detection on an image. Returns detections (with track IDs assigned).
-    std::vector<YoloDetection> detect(const cv::Mat &img, float confThresh = 0.25f, float iouThresh = 0.45f);
+    std::vector<YoloDetection> detect(const cv::Mat& img, float confThresh = 0.25f, float iouThresh = 0.45f);
 
     // Set the input size explicitly (width,height). If not set, default is 640x640.
     void setInputSize(const cv::Size &s) { inputSize = s; }
