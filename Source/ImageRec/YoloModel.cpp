@@ -13,7 +13,8 @@
 
 YOLOModel::YOLOModel() {}
 
-bool YOLOModel::Initialize(const std::string& modelPath, const std::string& labelsPath, int threadCount)
+bool YOLOModel::Initialize(const std::string &modelPath, const std::string &labelsPath,
+                           int threadCount)
 {
     cv::setNumThreads(threadCount);
     if (!loadModel(modelPath))
@@ -38,7 +39,7 @@ bool YOLOModel::Initialize(const std::string& modelPath, const std::string& labe
     return true;
 }
 
-bool YOLOModel::loadModel(const std::string& modelPath)
+bool YOLOModel::loadModel(const std::string &modelPath)
 {
     try
     {
@@ -54,7 +55,7 @@ bool YOLOModel::loadModel(const std::string& modelPath)
     return true;
 }
 
-bool YOLOModel::loadLabels(const std::string& labelsPath)
+bool YOLOModel::loadLabels(const std::string &labelsPath)
 {
     labels.clear();
 
@@ -66,13 +67,14 @@ bool YOLOModel::loadLabels(const std::string& labelsPath)
             YAML::Node yamlRoot = YAML::LoadFile(labelsPath);
             if (yamlRoot["names"])
             {
-                const auto& namesNode = yamlRoot["names"];
+                const auto &namesNode = yamlRoot["names"];
                 if (namesNode.IsSequence())
                 {
-                    // std::cout << "[YOLOModel::loadLabels] 'names' node is a sequence; processing."
+                    // std::cout << "[YOLOModel::loadLabels] 'names' node is a sequence;
+                    // processing."
                     //           << labelsPath << std::endl;
 
-                    for (const auto& nameNode : namesNode)
+                    for (const auto &nameNode : namesNode)
                     {
                         if (nameNode.IsScalar())
                         {
@@ -82,7 +84,8 @@ bool YOLOModel::loadLabels(const std::string& labelsPath)
                 }
                 else if (namesNode.IsMap())
                 {
-                    // std::cout << "[YOLOModel::loadLabels] 'names' node is a map; processing keys."
+                    // std::cout << "[YOLOModel::loadLabels] 'names' node is a map; processing
+                    // keys."
                     //           << labelsPath << std::endl;
 
                     // Collect keys and sort numerically
@@ -99,8 +102,9 @@ bool YOLOModel::loadLabels(const std::string& labelsPath)
                 }
                 else
                 {
-                    std::cerr << "[YOLOModel::loadLabels] 'names' node is neither sequence nor map: "
-                              << labelsPath << std::endl;
+                    std::cerr
+                        << "[YOLOModel::loadLabels] 'names' node is neither sequence nor map: "
+                        << labelsPath << std::endl;
                     return false;
                 }
             }
@@ -162,7 +166,7 @@ bool YOLOModel::loadLabels(const std::string& labelsPath)
     return !labels.empty();
 }
 
-std::vector<YoloDetection> YOLOModel::detect(const cv::Mat& img, float confThresh, float iouThresh)
+std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThresh, float iouThresh)
 {
     // Use stricter default thresholds if not provided
     if (confThresh < 1e-4f)
@@ -207,15 +211,15 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat& img, float confThres
         if (out.empty())
             return results;
 
-        // Expecting shape (1, attrs, num_preds) e.g. (1,5,N)
+        // Expecting shape (1, num_preds, attrs)
         if (out.dims < 3)
         {
             std::cerr << "[YOLOModel::detect] unexpected output dims=" << out.dims << std::endl;
             return results;
         }
-        int attrs = out.size[1];
-        int num_preds = out.size[2];
-        cv::Mat a = out.reshape(1, attrs); // rows=attrs, cols=num_preds
+        int num_preds = out.size[1];
+        int attrs = out.size[2];
+        cv::Mat a = out.reshape(1, num_preds); // rows=num_preds, cols=attrs
 
         // Debug: log basic stats about outputs and attribute ranges
         float rawMaxConf = 0.f;
@@ -229,13 +233,13 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat& img, float confThres
         {
             for (int r = 0; r < attrs; ++r)
             {
-                float v = a.at<float>(r, i);
+                float v = a.at<float>(i, r);
                 if (v < minAttr[r])
                     minAttr[r] = v;
                 if (v > maxAttr[r])
                     maxAttr[r] = v;
             }
-            float rawConf = a.at<float>(4, i);
+            float rawConf = a.at<float>(i, 4);
             float conf = 1.0f / (1.0f + std::exp(-rawConf)); // sigmoid on logits
             if (rawConf > rawMaxConf)
                 rawMaxConf = rawConf;
@@ -259,29 +263,6 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat& img, float confThres
         //               << std::endl;
         // }
 
-        // Print top-k predictions by confidence (useful to inspect units and values)
-        int topk = std::min(10, num_preds);
-        std::vector<std::pair<float, int>> confIdx;
-        confIdx.reserve(num_preds);
-        for (int i = 0; i < num_preds; ++i)
-        {
-            float raw = a.at<float>(4, i);
-            float s = 1.0f / (1.0f + std::exp(-raw));
-            confIdx.emplace_back(s, i);
-        }
-        std::sort(confIdx.begin(), confIdx.end(),
-                  [](const auto &A, const auto &B) { return A.first > B.first; });
-        std::cout << "Top " << topk << " predictions by confidence:" << std::endl;
-        for (int ti = 0; ti < topk; ++ti)
-        {
-            int i = confIdx[ti].second;
-            std::ostringstream ss;
-            ss << " top[" << ti << "] idx=" << i << " conf=" << confIdx[ti].first << " ->";
-            for (int r = 0; r < std::min(attrs, 8); ++r)
-                ss << " " << a.at<float>(r, i);
-            std::cout << ss.str() << std::endl;
-        }
-
         std::vector<cv::Rect> boxes;
         std::vector<float> scores;
         std::vector<int> preNmsIdx;
@@ -296,61 +277,55 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat& img, float confThres
                 break;
             }
         }
-        if (coordsArePixels)
-            std::cout << "[YOLOModel::detect] interpreting box coords as pixel units" << std::endl;
+        // if (coordsArePixels)
+        //     std::cout << "[YOLOModel::detect] interpreting box coords as pixel units" << std::endl;
 
         for (int i = 0; i < num_preds; ++i)
         {
-            float cx = a.at<float>(0, i);
-            float cy = a.at<float>(1, i);
-            float w = a.at<float>(2, i);
-            float h = a.at<float>(3, i);
-            float rawConf = a.at<float>(4, i);
+            float cx = a.at<float>(i, 0);
+            float cy = a.at<float>(i, 1);
+            float w = a.at<float>(i, 2);
+            float h = a.at<float>(i, 3);
+            float rawConf = a.at<float>(i, 4);
             float objConf = 1.0f / (1.0f + std::exp(-rawConf));
 
             int predictedClass = 0;
             float finalScore = objConf;
-            // If model provides class logits/scores, decode them (softmax)
+            // For YOLOv5/YOLOv8: apply sigmoid to each class logit, not softmax
             if (attrs > 5)
             {
                 int numClasses = attrs - 5;
-                // gather logits and compute softmax (numerically stable)
                 std::vector<float> cls(numClasses);
-                float maxv = -std::numeric_limits<float>::infinity();
-                for (int c = 0; c < numClasses; ++c)
-                {
-                    float v = a.at<float>(5 + c, i);
-                    cls[c] = v;
-                    if (v > maxv)
-                        maxv = v;
-                }
-                float sum = 0.0f;
-                for (int c = 0; c < numClasses; ++c)
-                {
-                    cls[c] = std::exp(cls[c] - maxv);
-                    sum += cls[c];
-                }
-                int best = 0;
                 float bestProb = 0.f;
-                if (sum > 0.0f)
+                int best = 0;
+                for (int c = 0; c < numClasses; ++c)
                 {
-                    for (int c = 0; c < numClasses; ++c)
+                    float logit = a.at<float>(i, 5 + c);
+                    float prob = 1.0f / (1.0f + std::exp(-logit)); // sigmoid
+                    cls[c] = prob;
+                    if (prob > bestProb)
                     {
-                        cls[c] /= sum;
-                        if (cls[c] > bestProb)
-                        {
-                            bestProb = cls[c];
-                            best = c;
-                        }
+                        bestProb = prob;
+                        best = c;
                     }
                 }
                 predictedClass = best;
-                finalScore = objConf * bestProb; // combine objectness and class prob
+                finalScore = objConf * bestProb; // combine objectness and best class prob
             }
             else
             {
                 // single-class or person-only model: predictedClass stays 0
                 finalScore = objConf;
+            }
+
+            // Debug output for each prediction after class/score calculation
+            if (i < 10) {
+                std::ostringstream ss;
+                ss << "[YOLOModel::detect] pred " << i << ": conf=" << finalScore << ", class=" << predictedClass;
+                if (labels.size() > predictedClass && predictedClass >= 0) {
+                    ss << " (" << labels[predictedClass] << ")";
+                }
+                std::cout << ss.str() << std::endl;
             }
 
             // If labels are present and model is multi-class, require 'person'
@@ -366,8 +341,9 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat& img, float confThres
                         break;
                     }
                 }
-                // std::cout << "[YOLOModel::detect] person class index = " << personIdx << std::endl;
-                // std::cout << "[YOLOModel::detect] predicted class index = " << predictedClass
+                // std::cout << "[YOLOModel::detect] person class index = " << personIdx <<
+                // std::endl; std::cout << "[YOLOModel::detect] predicted class index = " <<
+                // predictedClass
                 //           << std::endl;
 
                 if (personIdx != -1 && predictedClass != personIdx)
