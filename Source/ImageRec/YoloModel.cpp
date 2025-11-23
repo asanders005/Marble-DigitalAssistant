@@ -121,9 +121,6 @@ bool YOLOModel::loadLabels(const std::string &labelsPath)
             return false;
         }
 
-        std::cout << "[YOLOModel::loadLabels] loaded " << labels.size() << " labels from YAML file."
-                  << std::endl;
-
         return !labels.empty();
     }
 
@@ -221,7 +218,6 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
         int attrs = out.size[2];
         cv::Mat a = out.reshape(1, num_preds); // rows=num_preds, cols=attrs
 
-        // Debug: log basic stats about outputs and attribute ranges
         float rawMaxConf = 0.f;
         float sigMaxConf = 0.f;
         int countOver001 = 0;
@@ -289,15 +285,15 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
             float rawConf = a.at<float>(i, 4);
             float objConf = 1.0f / (1.0f + std::exp(-rawConf));
 
-            int predictedClass = 0;
+            int predictedClass = -1;
             float finalScore = objConf;
             // For YOLOv5/YOLOv8: apply sigmoid to each class logit, not softmax
             if (attrs > 5)
             {
                 int numClasses = attrs - 5;
                 std::vector<float> cls(numClasses);
-                float bestProb = 0.f;
-                int best = 0;
+                float bestProb = 0;
+                int best = -1;
                 for (int c = 0; c < numClasses; ++c)
                 {
                     float logit = a.at<float>(i, 5 + c);
@@ -319,14 +315,14 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
             }
 
             // Debug output for each prediction after class/score calculation
-            if (i < 10) {
-                std::ostringstream ss;
-                ss << "[YOLOModel::detect] pred " << i << ": conf=" << finalScore << ", class=" << predictedClass;
-                if (labels.size() > predictedClass && predictedClass >= 0) {
-                    ss << " (" << labels[predictedClass] << ")";
-                }
-                std::cout << ss.str() << std::endl;
-            }
+            // if (i < 10) {
+            //     std::ostringstream ss;
+            //     ss << "[YOLOModel::detect] pred " << i << ": conf=" << finalScore << ", class=" << predictedClass;
+            //     if (labels.size() > predictedClass && predictedClass >= 0) {
+            //         ss << " (" << labels[predictedClass] << ")";
+            //     }
+            //     std::cout << ss.str() << std::endl;
+            // }
 
             // If labels are present and model is multi-class, require 'person'
             if (labels.size() > 1)
@@ -615,7 +611,7 @@ std::vector<YoloDetection> YOLOModel::detect(const cv::Mat &img, float confThres
         std::unordered_set<int> matchedTracks;
         for (auto &d : dets)
         {
-            float bestIoU = 0.f;
+            float bestIoU = 0;
             int bestTrack = -1;
             for (const auto &kv : trackLastBox)
             {

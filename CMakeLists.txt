@@ -34,6 +34,8 @@ add_executable(${PROJECT_NAME}
     Source/Camera/GstRecorder.cpp
     
     Source/ImageRec/YoloModel.cpp
+
+    Source/Metrics/MetricTracker.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/Source)

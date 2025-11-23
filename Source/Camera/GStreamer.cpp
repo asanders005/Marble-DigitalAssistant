@@ -72,7 +72,7 @@ bool GStreamer::startRecording(const std::string &filename, int bitrate_kbps)
         return false;
     }
     this->bitrate_kbps = bitrate_kbps;
-    recordingFilename = "build/Assets/Video/" + filename;
+    recordingFilename = "build/Data/Videos/" + filename;
 
     // Determine effective fps for the writer. Prefer camera-negotiated fps if available,
     // otherwise fall back to the requested fps. If camera reports 0, sample a few frames

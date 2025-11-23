@@ -1,5 +1,6 @@
 #include "Camera/GStreamer.h"
 #include "ImageRec/YoloModel.h"
+#include "Metrics/MetricTracker.h"
 
 #include <atomic>
 #include <memory>
@@ -35,7 +36,10 @@ int main()
     }
     gst->startRecordingDateTime();
 
-    float predictionDelay = 1000.0f; // milliseconds between predictions
+    std::unique_ptr<MetricTracker> metricTracker = std::make_unique<MetricTracker>();
+    metricTracker->NewMetric();
+    
+    float predictionDelay = 500.0f; // milliseconds between predictions
     float currentTime = static_cast<float>(cv::getTickCount()) / cv::getTickFrequency() * 1000.0f;
     float lastPredictionTime = 0.0f;
 
@@ -99,6 +103,20 @@ int main()
         {
             gst->stopRecording();
             gst->startRecordingDateTime();
+
+            metricTracker->EndMetric();
+            std::time_t t = std::time(0);
+            std::tm tm = *std::localtime(&t);
+            if (tm.tm_hour == 0)
+            {
+                // At midnight, write previous day's metrics and reset for new day
+                metricTracker->WriteDateTime();
+                metricTracker->ResetMetrics();
+
+                model->resetTracks();
+            }
+            metricTracker->NewMetric();
+            
             endTime = currentTime + videoLengthMs;
         }
 
@@ -107,6 +125,8 @@ int main()
             if (det.score < 0.3f)
                 continue;
 
+            metricTracker->PersonPassed(det.trackId);
+                
             cv::rectangle(frame, det.box, cv::Scalar(0, 255, 0), 2);
             std::string label =
                 "ID: " + std::to_string(det.trackId) + " Conf: " + std::to_string(det.score);
@@ -120,6 +140,9 @@ int main()
             break; // ESC to exit
     }
 #pragma endregion
+
+    metricTracker->EndMetric();
+    metricTracker->WriteDateTime();
 
     gst->stopRecording();
     running.store(false);
