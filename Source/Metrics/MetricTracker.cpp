@@ -112,14 +112,13 @@ bool MetricTracker::WriteDateTime() const
 
 bool MetricTracker::CanAddPerson(int trackId)
 {
-    auto it = activeTracks.find(trackId);
-    if (it != activeTracks.end())
+    if (std::find(savedTracks.begin(), savedTracks.end(), trackId) != savedTracks.end())
     {
         // Already tracked
         return false;
     }
 
-    if (activeTracks[trackId] < 5)
+    if (activeTracks[trackId] < 3)
     {
         // Increment capture count
         activeTracks[trackId]++;

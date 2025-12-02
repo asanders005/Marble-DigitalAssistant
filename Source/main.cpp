@@ -74,6 +74,17 @@ int main()
                     std::lock_guard<std::mutex> lock(detectionMutex);
                     latestDetections = detections;
                 }
+                for (const auto& det : detections)
+                {
+                    if (det.score < 0.3f)
+                        continue;
+
+                    if (det.trackId >= 0)
+                    {
+                        // For this example, consider trackIds >= 0 as "entered"
+                        metricTracker->PersonEntered(det.trackId);
+                    }
+                }
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(predictionDelay)));
@@ -125,8 +136,6 @@ int main()
             if (det.score < 0.3f)
                 continue;
 
-            metricTracker->PersonPassed(det.trackId);
-                
             cv::rectangle(frame, det.box, cv::Scalar(0, 255, 0), 2);
             std::string label =
                 "ID: " + std::to_string(det.trackId) + " Conf: " + std::to_string(det.score);
