@@ -17,6 +17,8 @@ pkg_check_modules(GSTREAMER_VIDEO REQUIRED gstreamer-video-1.0)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(yaml-cpp REQUIRED)
+find_package(mongocxx REQUIRED)
+find_package(bsoncxx REQUIRED)
 
 include(CTest)
 enable_testing()
@@ -36,6 +38,7 @@ add_executable(${PROJECT_NAME}
     Source/ImageRec/YoloModel.cpp
 
     Source/Metrics/MetricTracker.cpp
+    Source/Metrics/MongoLink.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/Source)
@@ -104,6 +107,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/ThirdParty/opencv-4.8.0/build/lib/libopencv_videoio.so
     )
 target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp)
+target_include_directories(${PROJECT_NAME} PRIVATE /usr/local/include/mongocxx /usr/local/include/bsoncxx /usr/local/include/mongocxx/v_noabi /usr/local/include/bsoncxx/v_noabi)
+target_link_libraries(${PROJECT_NAME} PRIVATE /usr/local/lib/libmongocxx.so /usr/local/lib/libbsoncxx.so)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

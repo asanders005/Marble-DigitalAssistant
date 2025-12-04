@@ -1,9 +1,11 @@
 #include "GstRecorder.h"
+#include "Metrics/MongoLink.h"
 
 #include <gst/video/video.h>
 #include <gst/app/gstappsrc.h>
 #include <iostream>
 #include <sstream>
+#include <filesystem>
 
 GstRecorder::GstRecorder()
 {
@@ -121,7 +123,7 @@ bool GstRecorder::pushFrame(const cv::Mat& frame)
     return true;
 }
 
-void GstRecorder::stop()
+void GstRecorder::stop(bool upload)
 {
     if (!running.load()) return;
 
@@ -175,6 +177,11 @@ void GstRecorder::stop()
         pipeline = nullptr;
     }
 
+    if (upload)
+    {
+        // Upload video to MongoDB
+        MongoLink::GetInstance().UploadVideo(filename, std::filesystem::path(filename).filename().string());
+    }
     running.store(false);
 
     std::lock_guard<std::mutex> lk(queueMutex);

@@ -1,4 +1,5 @@
 #include "MetricTracker.h"
+#include "MongoLink.h"
 
 #include <iostream>
 #include <fstream>
@@ -6,6 +7,10 @@
 #include <ctime>
 #include <chrono>
 #include <json.hpp>
+#include <filesystem>
+#include <mongocxx/client.hpp>
+#include <mongocxx/instance.hpp>
+#include <mongocxx/uri.hpp>
 
 void MetricTracker::NewMetric()
 {
@@ -53,7 +58,7 @@ void MetricTracker::PersonPassed(int trackId)
     }
 }
 
-bool MetricTracker::WriteToFile(const std::string& filename) const
+bool MetricTracker::WriteToFile(const std::string& filename, bool upload) const
 {
     std::cout << "[MetricTracker] Writing metrics to file: " << filename << std::endl;
     
@@ -96,17 +101,22 @@ bool MetricTracker::WriteToFile(const std::string& filename) const
 
     ofs << std::setw(4) << metricsJson << std::endl;
     ofs.close();
+    if (upload)
+    {
+        MongoLink::GetInstance().UploadMetric(filename);
+    }
+    
     return true;
 }
 
-bool MetricTracker::WriteDateTime() const
+bool MetricTracker::WriteDateTime(bool upload) const
 {
     std::time_t t = std::time(0);
     std::tm tm = *std::localtime(&t);
     std::string filename = "build/Data/Metrics/" + std::to_string(tm.tm_year + 1900) + "-" +
                         std::to_string(tm.tm_mon + 1) + "-" +
                         std::to_string(tm.tm_mday) + ".json";
-    WriteToFile(filename);
+    WriteToFile(filename, upload);
     return true;
 }
 
@@ -130,6 +140,40 @@ bool MetricTracker::CanAddPerson(int trackId)
         activeTracks.erase(trackId);
         return true;
     }
+}
+
+bool MetricTracker::UploadAllMetrics() const
+{
+    namespace fs = std::filesystem;
+
+    fs::path metricsDir = "build/Data/Metrics";
+    if (!fs::exists(metricsDir) || !fs::is_directory(metricsDir)) {
+        std::cerr << "[MetricTracker] Metrics directory does not exist: " << metricsDir << std::endl;
+        return false;
+    }
+
+    for (const auto& entry : fs::directory_iterator(metricsDir)) {
+        if (entry.is_regular_file()) {
+            std::string filename = entry.path().string();
+            MongoLink::GetInstance().UploadMetric(filename);
+        }
+    }
+
+    fs::path videosDir = "build/Data/Videos";
+    if (!fs::exists(videosDir) || !fs::is_directory(videosDir)) {
+        std::cerr << "[MetricTracker] Videos directory does not exist: " << videosDir << std::endl;
+        return false;
+    }
+
+    for (const auto& entry : fs::directory_iterator(videosDir)) {
+        if (entry.is_regular_file()) {
+            std::string filepath = entry.path().string();
+            std::string filename = entry.path().filename().string();
+            MongoLink::GetInstance().UploadVideo(filepath, filename);
+        }
+    }
+    
+    return true;
 }
 
 void MetricTracker::ResetMetrics()

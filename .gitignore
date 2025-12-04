@@ -112,3 +112,5 @@ Thumbs.db
 DartConfiguration.tcl
 
 MarbleCodeBase
+
+build/Assets/Secrets

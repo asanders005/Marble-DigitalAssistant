@@ -112,7 +112,7 @@ int main()
         currentTime = static_cast<float>(cv::getTickCount()) / cv::getTickFrequency() * 1000.0f;
         if (currentTime >= endTime)
         {
-            gst->stopRecording();
+            gst->stopRecording(true);
             gst->startRecordingDateTime();
 
             metricTracker->EndMetric();
@@ -121,7 +121,7 @@ int main()
             if (tm.tm_hour == 0)
             {
                 // At midnight, write previous day's metrics and reset for new day
-                metricTracker->WriteDateTime();
+                metricTracker->WriteDateTime(true);
                 metricTracker->ResetMetrics();
 
                 model->resetTracks();
@@ -151,9 +151,9 @@ int main()
 #pragma endregion
 
     metricTracker->EndMetric();
-    metricTracker->WriteDateTime();
+    metricTracker->WriteDateTime(true);
 
-    gst->stopRecording();
+    gst->stopRecording(true);
     running.store(false);
     detectThread.join();
 

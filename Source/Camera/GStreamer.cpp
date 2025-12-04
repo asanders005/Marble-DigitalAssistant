@@ -128,11 +128,11 @@ bool GStreamer::startRecordingDateTime(int bitrate_kbps, const std::string &file
     return startRecording(oss.str(), bitrate_kbps);
 }
 
-void GStreamer::stopRecording()
+void GStreamer::stopRecording(bool upload)
 {
     if (isRecording())
     {
-        recorder->stop();
+        recorder->stop(upload);
         // writer->release();
         // writer.reset();
     }

@@ -36,7 +36,7 @@ public:
     bool isRunning() const {
         return running.load();
     }
-    void stop();
+    void stop(bool upload = false);
 
 private:
     void recorderThreadFunc();

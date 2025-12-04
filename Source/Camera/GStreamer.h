@@ -31,7 +31,7 @@ public:
         return recorder->isRunning();
         //return (writer && writer->isOpened());
     }
-    void stopRecording();
+    void stopRecording(bool upload = false);
     
 private:
     double measureCaptureFps(int samples = 3);

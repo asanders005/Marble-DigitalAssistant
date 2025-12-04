@@ -16,8 +16,10 @@ public:
     void PersonEntered(int trackId);
     void PersonPassed(int trackId);
 
-    bool WriteToFile(const std::string& filename) const;
-    bool WriteDateTime() const;
+    bool WriteToFile(const std::string& filename, bool upload = false) const;
+    bool WriteDateTime(bool upload = false) const;
+
+    bool UploadAllMetrics() const;
     
     void ResetMetrics();
 
