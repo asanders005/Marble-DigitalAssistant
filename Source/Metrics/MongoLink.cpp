@@ -83,11 +83,11 @@ MongoLink::MongoLink()
         secretsBuffer << secretsFile.rdbuf();
         auto secretsDoc = bsoncxx::from_json(secretsBuffer.str());
         auto connStrElem = secretsDoc.view()["MongoDBConnectionString"];
-        if (!connStrElem || connStrElem.type() != bsoncxx::type::k_utf8)
+        if (!connStrElem || connStrElem.type() != bsoncxx::type::k_string)
         {
             throw std::runtime_error("MongoDBConnectionString not found or invalid in secrets.json.");
         }
-        const auto uri = mongocxx::uri{connStrElem.get_utf8().value.to_string()};
+        const auto uri = mongocxx::uri{std::string(connStrElem.get_string().value)};
 
         mongocxx::options::client clientOptions;
         const auto api =
