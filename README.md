@@ -3,6 +3,7 @@
 Marble Metrics is an autonomous computer vision system designed to track and count people using a Raspberry Pi and camera module. The system captures video footage, applies real-time person detection and tracking using the **Ultralytics YOLOv5n** model, and uploads the resulting analytics to a **MongoDB cluster** for long-term storage and analysis.
 
 The project is designed to be fully hands-off: once powered on, Marble Metrics runs automatically without requiring any user interaction.
+<img width="1737" height="1193" alt="image" src="https://github.com/user-attachments/assets/2e48eb6c-bfeb-40d5-b7de-087f5b9d8c54" />
 
 ---
 
