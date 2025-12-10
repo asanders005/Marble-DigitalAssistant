@@ -102,8 +102,8 @@ int main()
                     }
                 }
 
-                std::this_thread::sleep_for(
-                    std::chrono::milliseconds(static_cast<int>(predictionDelay)));
+                // std::this_thread::sleep_for(
+                //     std::chrono::milliseconds(static_cast<int>(predictionDelay)));
             }
         };
 
@@ -147,21 +147,20 @@ int main()
                 endTime = currentTime + videoLengthMs;
             }
 
-            for (const auto &det : detectionsCopy)
-            {
-                if (det.score < 0.3f)
-                    continue;
 #ifndef NDEBUG
-                cv::rectangle(frame, det.box, cv::Scalar(0, 255, 0), 2);
-                std::string label =
-                    "ID: " + std::to_string(det.trackId) + " Conf: " + std::to_string(det.score);
-                cv::putText(frame, label, cv::Point(det.box.x, det.box.y - 10),
-                            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-#endif // !NDEBUG
-            }
+//             for (const auto &det : detectionsCopy)
+//             {
+//                 if (det.score < 0.3f)
+//                     continue;
+//                 cv::rectangle(frame, det.box, cv::Scalar(0, 255, 0), 2);
+//                 std::string label =
+//                     "ID: " + std::to_string(det.trackId) + " Conf: " + std::to_string(det.score);
+//                 cv::putText(frame, label, cv::Point(det.box.x, det.box.y - 10),
+//                             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+//             }
 
-            // For debugging show the frame:
-#ifndef NDEBUG
+            cv::putText(frame, std::to_string(metricTracker->GetCurrentCount()), cv::Point(10, 30),
+                        cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
             cv::imshow("camera", frame);
             if (cv::waitKey(1) == 27)
                 break; // ESC to exit

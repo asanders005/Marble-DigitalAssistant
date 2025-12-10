@@ -16,6 +16,8 @@ public:
     void PersonEntered(int trackId);
     void PersonPassed(int trackId);
 
+    int GetCurrentCount();
+
     bool WriteToFile(const std::string& filename, bool upload = false) const;
     bool WriteDateTime(bool upload = false) const;
 

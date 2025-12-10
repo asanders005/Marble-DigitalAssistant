@@ -58,6 +58,15 @@ void MetricTracker::PersonPassed(int trackId)
     }
 }
 
+int MetricTracker::GetCurrentCount()
+{
+    if (currentMetric)
+    {
+        return currentMetric->totalPeople;
+    }
+    return 0;
+}
+
 bool MetricTracker::WriteToFile(const std::string& filename, bool upload) const
 {
     std::cout << "[MetricTracker] Writing metrics to file: " << filename << std::endl;
